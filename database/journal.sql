@@ -5,6 +5,7 @@ uuid              CHAR(36),
 needFeed          BOOLEAN,
 needImage         BOOLEAN,
 shouldDeleted     BOOLEAN,
-shouldDeleteImage BOOLEAN
+shouldDeleteImage BOOLEAN,
+primary key (uuid)
 
 );
