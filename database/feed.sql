@@ -1,4 +1,7 @@
 use feed_db;
+
+DROP TABLE IF EXISTS feed_tb;
+
 CREATE TABLE feed_tb (
 
 uuid     CHAR(36) NOT NULL,
