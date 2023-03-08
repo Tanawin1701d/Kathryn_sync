@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+message msg{
+
+  string uuid = 1;
+  string author = 2;
+  string message = 3;
+  uint32 likes = 4;
+  bytes image = 5;
+  bool   needFeed = 6;
+  bool   needImage = 7;
+  bool   isDelete = 8;
+  bool   isImageDelete = 9;
+
+}
+
+
+//////
+///// isDelete
+
+/////   isImage
+
+////// allujrht439iqltarthuoiwe45u6totgeirjkt
