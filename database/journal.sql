@@ -1,0 +1,9 @@
+CREATE TABLE jor_tb (
+
+uuid              CHAR(36),
+needFeed          BOOLEAN,
+needImage         BOOLEAN,
+shouldDeleted     BOOLEAN,
+shouldDeleteImage BOOLEAN
+
+);
