@@ -4,3 +4,4 @@ sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
     python3-dev python-is-python3 libboost-all-dev pkg-config
 sudo apt install libmysqlcppconn-dev
 sudo apt install libcpprest-dev
+sudo apt install mysql-client
