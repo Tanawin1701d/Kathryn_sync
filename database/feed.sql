@@ -1,3 +1,4 @@
+use feed_db;
 CREATE TABLE feed_tb (
 
 uuid     CHAR(36),

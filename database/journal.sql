@@ -1,3 +1,4 @@
+use jor_db;
 CREATE TABLE jor_tb (
 
 uuid              CHAR(36),
