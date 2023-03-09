@@ -27,12 +27,14 @@ private:
     mutex   DBMUTEX;
     //////// database element
     string DB_URL;
+    string DB_USERNAME= "tanawin";
     string DB_NAME    = "feed_db";
     string TABLE_NAME = "jor_tb";
     sql::Driver* driver;
     sql::Connection* con;
 
-
+    bool isCleanerinitiate;
+    const int cronJobCycle = 300;
 
     ///////// our data
     map<string, REQ_DATA> transactionPool;
@@ -45,6 +47,10 @@ public:
 
     DB_CONNECT_JOR(string _DB_URL, string password);
     ~DB_CONNECT_JOR();
+
+    /////// cron job manager to make sure that message will go to database
+    static void proxyCronJob (DB_CONNECT_JOR* fd){fd->cronJob();};
+    void                         cronJob();
 
     void                         pushDataToDb(string& uuid,REQ_DATA& _fda);
     void                         notifyToClearDb(string& uuid);
