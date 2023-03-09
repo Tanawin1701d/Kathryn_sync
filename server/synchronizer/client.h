@@ -47,9 +47,10 @@ private:
     DATAPOOL*          myDataPool;
     DISK_CONNECT*      myDISKconnect;
     DB_CONNECT_FEED*   myDBconnect_feed;
+
+
+    /////// mutex lock is needed
     DB_CONNECT_JOR*    myDBconnect_jor;
-
-
 
 
     /////// pending list to send data
@@ -91,8 +92,7 @@ public:
            DISK_CONNECT*    _myDISKconnect,
            DB_CONNECT_FEED* _myDBconnect_feed,
            DB_CONNECT_JOR*  _myDBconnect_jor);
-    void lock();
-    void unlock();
+
     void update(string& uuid, bool needFeed, bool needImage, bool needDelete, bool needDeleteImage);
     void tryToEvict();
     void trySaveToCache(string uuid, REQ_DATA& tempToUpdate);

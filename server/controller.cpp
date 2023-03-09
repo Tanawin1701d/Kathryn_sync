@@ -4,14 +4,16 @@
 
 #include "controller.h"
 
-CONTROLLER::CONTROLLER(CLIENT*       _my_client,
-                       DATAPOOL*     _my_dataPool,
-                       DISK_CONNECT* _my_disk,
-                       DB_CONNECT_FEED*   _my_db):
+CONTROLLER::CONTROLLER(CLIENT*            _my_client,
+                       DATAPOOL*          _my_dataPool,
+                       DISK_CONNECT*      _my_disk,
+                       DB_CONNECT_FEED*   _my_db_feed,
+                       DB_CONNECT_JOR*    _my_db_jor ):
         my_client(_my_client),
         my_dataPool(_my_dataPool),
         my_disk(_my_disk),
-        my_db_feed(_my_db)
+        my_db_feed(_my_db_feed),
+        my_db_jor(_my_db_jor)
 {}
 
 
@@ -304,7 +306,6 @@ void CONTROLLER::getMethod(http_request &request) {
 
 void
 CONTROLLER::lockAll(){
-    my_client->lock();
     my_dataPool->lock();
     my_disk->lock();
     my_db_feed->lock();
@@ -312,8 +313,8 @@ CONTROLLER::lockAll(){
 
 void
 CONTROLLER::unlockAll(){
-    my_client->unlock();
     my_dataPool->unlock();
     my_disk->unlock();
     my_db_feed->unlock();
+
 }

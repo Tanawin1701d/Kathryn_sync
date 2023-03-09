@@ -18,16 +18,11 @@ CLIENT::CLIENT(DATAPOOL*        _myDataPool,
     tryReMakePendingList();
 }
 
-void CLIENT::lock(){
-    PENDING_MUTEX.lock();
-}
-
-void CLIENT::unlock(){
-    PENDING_MUTEX.unlock();
-}
-
 void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete, bool needDeleteImage) {
+    PENDING_MUTEX.lock();
+    myDBconnect_jor->lock();
 
+    reqNewJournalVersion = true;
     /////// finder there are exist at memory
     REQ_DATA tempToUpdate{false, false, false, false};
 
@@ -57,6 +52,8 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
     trySaveToCache(uuid, tempToUpdate);
     myDBconnect_jor->pushDataToDb(uuid, tempToUpdate);
     tryToEvict();
+    PENDING_MUTEX.unlock();
+    myDBconnect_jor->unlock();
 }
 
 
@@ -137,7 +134,11 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
     //////// in case there is not retrieve yet
     auto* uqBuffer = new unique_lock<mutex>(*buffer_mutex);
     if (*buffer_state == EMPTY){
+        PENDING_MUTEX.lock();
+        myDBconnect_jor->lock();
         recruit(buffer);
+        PENDING_MUTEX.unlock();
+        myDBconnect_jor->unlock();
     }else if (*buffer_state == PROCESSING){
         buffer_to_dis_sig_convar->wait(*uqBuffer,
                                        [&buffer_state](){return *buffer_state == READY;}
@@ -185,7 +186,11 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
 
             case EMPTY:{
                 *buffer_state = PROCESSING;
+                PENDING_MUTEX.lock();
+                myDBconnect_jor->lock();
                 recruit(buffer);
+                PENDING_MUTEX.unlock();
+                myDBconnect_jor->unlock();
                 *buffer_state = READY;
                 break;
             }
@@ -244,6 +249,7 @@ bool CLIENT::recruit(vector<unsigned char>* buffer) {
 
 
     /////////// compact data and send back to
+    string lastUUID;
     int retrieved = 0;
     buffer = new vector<unsigned char>;
     buffer->reserve(MAX_BUFFER_SIZE);
@@ -254,6 +260,7 @@ bool CLIENT::recruit(vector<unsigned char>* buffer) {
         string uuid = iter->first;
         REQ_DATA  reqDes = iter->second; ///request command
         preProto.Clear();
+        lastUUID = uuid;
         /////////////////////////////////////////////////
         preProto.set_uuid(uuid);
         if (reqDes.shouldDeleted){
@@ -316,9 +323,10 @@ bool CLIENT::recruit(vector<unsigned char>* buffer) {
         retrieved++;
         pendingList.erase(iter);
     }
+    if ((currentBatchIter != 0)){
+        myDBconnect_jor->notifyToClearDb(lastUUID);
+    }
+
 
     return false;
 }
-
-
-

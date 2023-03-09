@@ -1,18 +1,28 @@
 #include <iostream>
 #include <cpprest/http_listener.h>
 #include <cpprest/json.h>
+#include <thread>
 #include "synchronizer/client.h"
 #include "controller.h"
 
 
 int main() {
 
+        //////// create class
         DATAPOOL* myDataPool = new DATAPOOL();
         DB_CONNECT_FEED* myDb_feed     = new DB_CONNECT_FEED("localhost", "1234");
         DB_CONNECT_JOR*  myDb_jor      = new DB_CONNECT_JOR( "localhost", "1234");
         DISK_CONNECT*    myDisk        = new DISK_CONNECT("/media/tanawin/tanawin1701e/Learning/cloud/midterm/diskDes/");
         CLIENT* myClient               = new CLIENT(myDataPool, myDisk, myDb_feed, myDb_jor);
-        CONTROLLER* ctrl               = new CONTROLLER(myClient, myDataPool, myDisk, myDb_feed);
+        CONTROLLER* ctrl               = new CONTROLLER(myClient, myDataPool, myDisk, myDb_feed, myDb_jor);
+
+
+        ///////// create runAhead thread
+        auto proxyFuc = [](CLIENT* cl){cl->runAhead();};
+        thread rh(proxyFuc, myClient);
+
+
+        //////////// create listenner
         http_listener listener("http://localhost:8080");
 
         listener.support(methods::GET, [ctrl](http_request request){
@@ -37,6 +47,8 @@ int main() {
                 myDb_feed->flush();
             }else if(command == "flush_feed"){
                 myDb_feed->flush();
+            } else if (command == "exit"){
+                break;
             }
 
         }

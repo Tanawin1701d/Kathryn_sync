@@ -27,7 +27,7 @@ private:
     mutex   DBMUTEX;
     //////// database element
     string DB_URL;
-    string DB_NAME    = "jor_db";
+    string DB_NAME    = "feed_db";
     string TABLE_NAME = "jor_tb";
     sql::Driver* driver;
     sql::Connection* con;
