@@ -7,6 +7,8 @@
 
 #include <string>
 #include <vector>
+#include <thread>
+
 #include "../dataPool/dataPool.h"
 
 #include <cppconn/driver.h>
@@ -24,11 +26,15 @@ private:
     mutex   DBMUTEX;
     //////// database element
     string DB_URL;
+    string USER_NAME  = "tanawin";
     string DB_NAME    = "feed_db";
     string TABLE_NAME = "feed_tb";
     sql::Driver* driver;
     sql::Connection* con;
+    const int cronJobCycle = 300;
 
+
+    bool isCleanerinitiate;
 
 
     ///////// our data
@@ -41,6 +47,9 @@ private:
 
 public:
 
+    static void proxyCronJob (DB_CONNECT_FEED* fd){fd->cronJob();};
+
+
     DB_CONNECT_FEED(string _DB_URL, string password);
     ~DB_CONNECT_FEED();
 
@@ -50,6 +59,9 @@ public:
     ////// function that communicate with mysql
     void flush();
     void getDataFromDb(vector<string>& uuids, vector<FEED_DATA_WDL>& results);
+    ////// cron job
+    void cronJob();
+
     ////// lock io
     void lock();
     void unlock();

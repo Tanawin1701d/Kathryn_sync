@@ -106,7 +106,7 @@ add_executable(
 
         midterm
 
-        main.cpp
+        #main.cpp
 
         dataPool/model.h
         dataPool/model.cpp
@@ -130,7 +130,14 @@ add_executable(
 
         controller.h
 
-        persistIo/ioCtrlJor.cpp persistIo/ioCtrlJor.h)
+        persistIo/ioCtrlJor.cpp
+        persistIo/ioCtrlJor.h
+
+        #test/test_datapool.cpp
+        #test/test_disk.cpp
+        test/test_feed.cpp
+
+)
 
 
 TARGET_LINK_LIBRARIES( midterm PRIVATE ${Boost_LIBRARIES}

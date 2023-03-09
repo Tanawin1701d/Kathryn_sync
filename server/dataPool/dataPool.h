@@ -30,7 +30,7 @@ private:
 
     ////// size indicator and limitation
     uint64_t LIMITSIZE  = ((uint64_t)1) << (30);  ///// size in byte
-    uint64_t LIMITKEY   = 500000;
+    uint64_t LIMITKEY   = 250000;
     uint64_t amountKey  = 0;
     uint64_t amountSize = 0; //// size that value in storage is used
 

@@ -52,9 +52,7 @@ bool DATAPOOL::addData(string &uuid, FEED_DATA *_fda) {
     macroData->isDelete  = false;
     /////// try delete oldOne message //// state will be update later
     if ( (macroData->feed_state == M) || (macroData->feed_state == MS) ){
-        uint64_t sizeOfOldFeed = getSize(*(macroData->feedData));
-        delete macroData->feedData;
-        amountSize -= sizeOfOldFeed;
+        evictFeedMtoI(macroData);
     }
     ////////////////////////////////////////////////////////////////////
     ///// try to space from other source
@@ -90,9 +88,7 @@ bool DATAPOOL::addData(string &uuid, IMAGE_DATA* _ida) {
     //////////// state will be change later
 
     if (macroData->image_state == M){
-        uint64_t sizeOfOldImage = getSize(*(macroData->imageData));
-        delete macroData->imageData;
-        amountSize -=sizeOfOldImage;
+        evictImageMtoI(macroData);
     }
     ///////////////////////////////////////////////////////////////////////////
     //////// try to evict other image
@@ -261,12 +257,20 @@ bool DATAPOOL::isIdExistAndNotDeleted(string& uuid) {
 
 bool DATAPOOL::evictForFeed(uint64_t neededSpace) {
     if ( (amountSize + neededSpace) <= LIMITSIZE){ return true;}
-    for (auto macroData: coh_image[COH_STATE::M]){
-        evictImageMtoI(macroData);
+
+    for (auto macroDataIter = coh_image[COH_STATE::M].begin();
+              macroDataIter            != coh_image[COH_STATE::M].end();
+              ){
+        evictImageMtoI(*macroDataIter);
+        macroDataIter = coh_image[COH_STATE::M].begin();
         if ( (amountSize + neededSpace) <= LIMITSIZE){ return true;}
     }
-    for (auto macroData: coh_feed[COH_STATE::M]){
-        evictFeedMtoI(macroData);
+
+    for (auto macroDataIter =  coh_feed[COH_STATE::M].begin();
+              macroDataIter           !=  coh_feed[COH_STATE::M].end();
+        ){
+        evictFeedMtoI(*macroDataIter);
+        macroDataIter = coh_feed[COH_STATE::M].begin();
         if ( (amountSize + neededSpace) <= LIMITSIZE){ return true;}
     }
     return false;
@@ -287,6 +291,7 @@ void DATAPOOL::evictFeedMtoI(MACRO_DATA *macroData) {
     uint64_t sizeOfNewFeed = getSize(*(macroData->feedData));
     amountSize -= sizeOfNewFeed;
     delete macroData->feedData;
+    macroData->feedData = nullptr;
 }
 
 void DATAPOOL::evictImageMtoI(MACRO_DATA *macroData) {
@@ -299,6 +304,7 @@ void DATAPOOL::evictImageMtoI(MACRO_DATA *macroData) {
     uint64_t sizeOfNewImage = getSize(*(macroData->imageData));
     amountSize -= sizeOfNewImage;
     delete macroData->imageData;
+    macroData->imageData = nullptr;
 }
 
 /////// mutex

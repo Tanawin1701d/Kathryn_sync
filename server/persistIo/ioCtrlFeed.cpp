@@ -6,9 +6,12 @@
 #include "ioCtrlFeed.h"
 
 DB_CONNECT_FEED::DB_CONNECT_FEED(string _DB_URL, string password):
-DB_URL(_DB_URL) {
+DB_URL(_DB_URL),
+isCleanerinitiate(false)
+
+{
     driver = get_driver_instance();
-    con    = driver->connect("tcp://"+ DB_URL +  ":3306", "tanawin", password);
+    con    = driver->connect("tcp://"+ DB_URL +  ":3306", USER_NAME, password);
     con->setSchema(DB_NAME);
 }
 
@@ -28,7 +31,16 @@ void DB_CONNECT_FEED::pushDataToDb(string& uuid, FEED_DATA_WDL &_fda) {
 
     if (transactionPool.size() >= POOL_LIMIT){
         flush();
+    }else{
+        if (!isCleanerinitiate){
+            isCleanerinitiate = true;
+            thread rh(DB_CONNECT_FEED::proxyCronJob, this);
+            rh.detach();
+        }
+
     }
+
+
 
 }
 
@@ -48,10 +60,11 @@ bool DB_CONNECT_FEED::areThereKeyAtDb(const string& uuid) {
     try {
         sql::Statement *stmt = con->createStatement();
         std::string q = "SELECT count(*) as AreWeContain from " + TABLE_NAME +
-                        " where uuid == \"" + uuid + "\" AND " +
-                        "isDelete == false";
+                        " where uuid = \"" + uuid + "\" AND " +
+                        "isDelete = 0";
         sql::ResultSet *res = stmt->executeQuery(q);
-        bool ret = res->getInt("AreWeContain") == 0;
+        res->next();
+        bool ret = res->getInt("AreWeContain") != 0;
 
 
         delete res;
@@ -76,12 +89,12 @@ void DB_CONNECT_FEED::flush() {
         return;
     try {
         sql::Statement *stmt = con->createStatement();
-        std::string q = "REPLACE INTO " + TABLE_NAME + "(uuid, author, message, likes, isDelete) VALUES ";
+        std::string q = "REPLACE INTO " + TABLE_NAME + " (uuid, author, message, likes, isDelete) VALUES ";
         bool isFirst = true;
         for (auto transEle =  transactionPool.cbegin(); transEle != transactionPool.cend();){
 
             auto& transFeedWD = transEle->second;
-            string isDeleteStr = transFeedWD.isDelete ? "true": "false";
+            string isDeleteStr = transFeedWD.isDelete ? "1": "0";
             if (!isFirst){ q += ", "; }
             ////////// data to insert
             q += "(";
@@ -124,7 +137,7 @@ void DB_CONNECT_FEED::getDataFromDb(vector<string>& uuids, vector<FEED_DATA_WDL>
             bool isFirst = true;
             string q;
             string q_prefix = "SELECT * from " + TABLE_NAME + " WHERE uuid IN ( \'";
-            string q_suffix = " \')\n";
+            string q_suffix = "\')\n";
             string q_union = "UNION ALL\n";
 
             for (; absIter < endIter; absIter++) {
@@ -139,7 +152,7 @@ void DB_CONNECT_FEED::getDataFromDb(vector<string>& uuids, vector<FEED_DATA_WDL>
             }
             sql::ResultSet *res = stmt->executeQuery(q);
 
-            do {
+            while (res->next()){
                 results.push_back({
                                           {
                                                   res->getString("uuid"),
@@ -149,7 +162,7 @@ void DB_CONNECT_FEED::getDataFromDb(vector<string>& uuids, vector<FEED_DATA_WDL>
                                           },
                                           res->getBoolean("isDelete")
                                   });
-            } while (res->next());
+            }
 
             delete stmt;
             delete res;
@@ -163,6 +176,14 @@ void DB_CONNECT_FEED::getDataFromDb(vector<string>& uuids, vector<FEED_DATA_WDL>
         cout << ", SQLState: " << e.getSQLState() <<
              " )" << endl;
     }
+}
+
+void DB_CONNECT_FEED::cronJob(){
+    this_thread::sleep_for(std::chrono::seconds(cronJobCycle));
+    lock();
+    flush();
+    isCleanerinitiate = false;
+    unlock();
 }
 
 void
