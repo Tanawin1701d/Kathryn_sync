@@ -3,3 +3,5 @@ server/cmake-build-debug
 server/diskDes
 secret
 testing
+.DS_Store
+client/result.csv
