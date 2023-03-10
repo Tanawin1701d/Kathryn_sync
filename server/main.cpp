@@ -1,18 +1,21 @@
 #include <iostream>
-#include <cpprest/http_listener.h>
-#include <cpprest/json.h>
 #include <thread>
-#include "synchronizer/client.h"
+#include <utility>
 #include "controller.h"
+#include "crow.h"
 
 
 int main() {
+
+        pid_t pid = getpid();
+
+        printf("pid: %lu\n", pid);
 
         //////// create class
         DATAPOOL* myDataPool = new DATAPOOL();
         DB_CONNECT_FEED* myDb_feed     = new DB_CONNECT_FEED("localhost", "1234");
         DB_CONNECT_JOR*  myDb_jor      = new DB_CONNECT_JOR( "localhost", "1234");
-        DISK_CONNECT*    myDisk        = new DISK_CONNECT("/media/tanawin/tanawin1701e/Learning/cloud/midterm/diskDes/");
+        DISK_CONNECT*    myDisk        = new DISK_CONNECT("/media/tanawin/tanawin1701e/Learning/cloud/midtermRepo/server/diskDes/");
         CLIENT* myClient               = new CLIENT(myDataPool, myDisk, myDb_feed, myDb_jor);
         CONTROLLER* ctrl               = new CONTROLLER(myClient, myDataPool, myDisk, myDb_feed, myDb_jor);
 
@@ -22,24 +25,35 @@ int main() {
         thread rh(proxyFuc, myClient);
 
 
-        //////////// create listenner
-        http_listener listener("http://localhost:8080");
+        crow::SimpleApp app;
 
-        listener.support(methods::GET, [ctrl](http_request request){
-            ctrl->getMethod(request);
-        });
-        listener.support(methods::POST, [ctrl](http_request request){
-            ctrl->postHandler(request);
-        });
-        listener.support(methods::PUT, [ctrl](http_request request){
-            ctrl->putHandler(request);
-        });
-        listener.support(methods::DEL, [ctrl](http_request request){
-            ctrl->deleteHandler(request);
+        CROW_ROUTE(app, "/api/messages/").methods(crow::HTTPMethod::GET)
+                ([ctrl](const request& req, response& res){
+                    ctrl->getMethod(req, res);
+                });
+
+        CROW_ROUTE(app, "/api/messages/").methods(crow::HTTPMethod::POST)
+            ([ctrl](const request& req, response& res){
+                ctrl->postHandler(req, res);
+            });
+
+        CROW_ROUTE(app, "/api/messages/<path>").methods(crow::HTTPMethod::PUT)
+                ([ctrl](const request& req, response& res, string uuid){
+
+                    ctrl->putHandler(req, res, std::move(uuid));
+                });
+
+        CROW_ROUTE(app, "/api/messages/<path>").methods(crow::HTTPMethod::DELETE)
+        ([ctrl](const request& req, response& res, string uuid){
+            ctrl->deleteHandler(req, res, std::move(uuid));
         });
 
-        listener.open().wait();
+        app.port(8080).run();
 
+
+
+
+        cout << "system is started" << endl;
         while(true){
             string command;
             cin >> command;
@@ -52,9 +66,6 @@ int main() {
             }
 
         }
-
-        listener.close().wait();
-
 
         return 0;
 }

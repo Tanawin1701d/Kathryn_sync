@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 include(FindProtobuf)
 find_package(Protobuf REQUIRED)
 find_package(Threads REQUIRED)
-find_package(cpprestsdk REQUIRED)
+find_package(Crow REQUIRED)
 
 include_directories(${PROTOBUF_INCLUDE_DIR})
 
@@ -144,7 +144,6 @@ add_executable(
 TARGET_LINK_LIBRARIES( midterm PRIVATE ${Boost_LIBRARIES}
                                         Threads::Threads
                                         ${PROTOBUF_LIBRARY}
-                                        cpprestsdk::cpprest
                                         mysqlcppconn
-
+                                        Crow::Crow
         )

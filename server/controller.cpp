@@ -18,225 +18,165 @@ CONTROLLER::CONTROLLER(CLIENT*            _my_client,
 
 
 void
-CONTROLLER::postHandler(http_request& request)
+CONTROLLER::postHandler(const request& req, response& res)
 {
 
-    request.extract_json().then([request, this](json::value jsonData) {
+    auto json_obj = crow::json::load(req.body);
 
-                                    string uuid = jsonData[U("uuid")].as_string();
-                                    auto *fda = new FEED_DATA{
-                                            uuid,
-                                            jsonData[U("author")].as_string(),
-                                            jsonData[U("message")].as_string(),
-                                            jsonData[U("likes")].as_integer()
-                                    };
-
-                                    /////// dealwith image
-                                    bool imageUpdate = jsonData[U("imageUpdate")].as_bool();
-
-                                    IMAGE_DATA* ida;
-                                    string pic;
-
-                                    if (imageUpdate){
-                                        ///////// copy image
-                                        pic = jsonData[U("image")].as_string();
-                                        ida = new IMAGE_DATA{ pic };
-                                    }
-
-                                    ///////////////////////////////////// check storage integrity
-                                    lockAll();
-
-                                    bool integrity = false;
-                                    if (my_dataPool->isIdExist(fda->uuid)){
-                                        integrity = my_dataPool->isDeletedId(fda->uuid);
-                                    }else if (my_dataPool->isConsistent()){
-                                        integrity = false;
-                                    }else if (!my_db_feed->areThereKey(fda->uuid)){
-                                        integrity  =true;
-                                    }
-
-
-                                    if (!integrity) {
-                                        delete fda;
-                                        if (imageUpdate) {delete ida;}
-                                        /////// in-case push is flawn
-                                        http_response http_response(409);
-                                        // Send the response
-                                        request.reply(http_response).wait();
-                                        unlockAll();
-                                        return;
-                                    }
-
-                                    ///////////////////////////////////// update data to system
-                                    bool isDataPoolAcceptFeed  = false;
-                                    bool isDataPoolAcceptImage = false;
-
-                                    /////update data pool and disk
-                                    isDataPoolAcceptFeed = my_dataPool->addData(fda->uuid, fda);
-
-                                    //// update image to disk and cache if it neccessary
-                                    if ( imageUpdate ){
-                                        if (my_dataPool->isIdExist(fda->uuid))
-                                            isDataPoolAcceptImage = my_dataPool->addData(fda->uuid, ida);
-                                        my_disk->setDataToDisk(fda->uuid, pic);
-                                    }
-
-                                    /////update database
-                                    FEED_DATA_WDL insertdb = {*fda, false};
-                                    my_db_feed->pushDataToDb(fda->uuid, insertdb);
-
-                                    ////// update client
-
-                                    my_client->update(uuid,
-                                                      true, imageUpdate,
-                                                      false, false);
-
-                                    if (!isDataPoolAcceptFeed)
-                                        delete fda;
-                                    if ( (!isDataPoolAcceptImage) && imageUpdate){
-                                        delete ida;
-                                    }
-
-                                    /////////////// prepare for return
-                                    unlockAll();
-                                    http_response http_response(status_codes::OK);
-                                    // Send the response
-                                    request.reply(http_response).wait();
-                                    return;
-
-                                }
-    ).wait();
-
+    string uuid = json_obj["uuid"].s();
+    auto *fda = new FEED_DATA{
+        uuid,
+        json_obj["author"].s(),
+        json_obj["message"].s(),
+        (int)json_obj["likes"].u()
+    };
+    /////// dealwith image
+    bool imageUpdate = json_obj["imageUpdate"].b();
+    IMAGE_DATA* ida;
+    string pic;
+    if (imageUpdate){
+        ///////// copy image
+        pic = json_obj["image"].s();
+        ida = new IMAGE_DATA{ pic };
+    }
+    ///////////////////////////////////// check storage integrity
+    lockAll();
+    bool integrity = false;
+    if (my_dataPool->isIdExist(fda->uuid)){
+        integrity = my_dataPool->isDeletedId(fda->uuid);
+    }else if (my_dataPool->isConsistent()){
+        integrity = true;
+    }else if (!my_db_feed->areThereKey(fda->uuid)){
+        integrity  =true;
+    }
+    if (!integrity) {
+        delete fda;
+        if (imageUpdate) { delete ida;}
+        /////// in-case push is flawn
+        res.code = 409;
+        res.end();
+        unlockAll();
+        return;
+    }
+    ///////////////////////////////////// update data to system
+    bool isDataPoolAcceptFeed  = false;
+    bool isDataPoolAcceptImage = false;
+    /////update data pool and disk
+    isDataPoolAcceptFeed = my_dataPool->addData(fda->uuid, fda);
+    //// update image to disk and cache if it neccessary
+    if ( imageUpdate ){
+        if (my_dataPool->isIdExist(fda->uuid))
+            isDataPoolAcceptImage = my_dataPool->addData(fda->uuid, ida);
+        my_disk->setDataToDisk(fda->uuid, pic);
+    }
+    /////update database
+    FEED_DATA_WDL insertdb = {*fda, false};
+    my_db_feed->pushDataToDb(fda->uuid, insertdb);
+    ////// update client
+    my_client->update(uuid,
+                      true, imageUpdate,
+                      false, false);
+    if (!isDataPoolAcceptFeed)
+        delete fda;
+    if ( (!isDataPoolAcceptImage) && imageUpdate){
+        delete ida;
+    }
+    /////////////// prepare for return
+    unlockAll();
+    //// send response back to sender
+    res.code = 201;
+    res.end();
 }
 
 
 void
-CONTROLLER::putHandler(http_request& request){
+CONTROLLER::putHandler(const request& req, response& res, string uuid){
 
-    cout << request.relative_uri().path();
-    string path = request.relative_uri().path();
-    if ( (request.method() == methods::PUT) && (path.size() > 14)  && (path.substr(0,14) == "/api/messages/") ){
-
-        string uuid = path.substr(14,path.size()-14);
-
-        request.extract_json().then([uuid, request, this](json::value jsonData) {
-            string copiedUuid = uuid;
-            auto *fda = new FEED_DATA{
-                    copiedUuid,
-                    jsonData[U("author")].as_string(),
-                    jsonData[U("message")].as_string(),
-                    jsonData[U("likes")].as_integer()
+    auto json_obj = crow::json::load(req.body);
+    cout << req.body;
+    auto *fda = new FEED_DATA{
+        uuid,
+        json_obj["author"].s(),
+        json_obj["message"].s(),
+        (int)json_obj["likes"].u()
+    };
+    /////// dealwith image
+    bool imageUpdate = json_obj["imageUpdate"].b();
+    bool shouldDeleteImage = false;
+    IMAGE_DATA* ida;
+    if (imageUpdate){
+        ///////// copy image
+        if (json_obj.has("image") && (json_obj["image"].t() !=  crow::json::type::Null) ){
+            ida = new IMAGE_DATA{
+                json_obj["image"].s()
             };
-
-            /////// dealwith image
-            bool imageUpdate = jsonData[U("imageUpdate")].as_bool();
-            bool shouldDeleteImage = false;
-
-            IMAGE_DATA* ida;
-
-            if (imageUpdate){
-                ///////// copy image
-                if (jsonData.has_string_field(U("image"))) {
-                    ida = new IMAGE_DATA{
-                            jsonData[U("image")].as_string()
-                    };
-                }else{
-                    shouldDeleteImage = true;
-                }
-            }
-
-            ///////////////////////////////////// check storage integrity
-            lockAll();
-
-            bool integrity  = false;
-
-            if (my_dataPool->isIdExistAndNotDeleted(copiedUuid)){
-                integrity = true;
-            }else if (my_dataPool->isConsistent()) { ///// not exist or deleted
-                integrity = false;
-            }else if (  my_db_feed->areThereKey(fda->uuid)){
-                integrity  =true;
-            }
-
-            if (!integrity) {
-                http_response http_response(404);
-                // Send the response
-                request.reply(http_response).wait();
-
-                unlockAll();
-                return;
-            }
-
-
-            ///////////////////////////////////// update data to system
-            ////////////// so we can assume that if uuid is exist at the database, there is no deletion at that uuid
-            bool isDataPoolAcceptFeed  = false;
-            bool isDataPoolAcceptImage = false;
-
-            bool isSameFeed = false;
-            if (my_dataPool->isIdExistAndNotDeleted(copiedUuid)){
-                auto oldData = my_dataPool->getFeedData(fda->uuid);
-                isSameFeed = (oldData != nullptr) && ((*oldData) == (*fda));
-            }
-
-
-            /////update data pool and disk
-            isDataPoolAcceptFeed = my_dataPool->addData(fda->uuid, fda);
-
-            if ( imageUpdate ){
-                if (shouldDeleteImage) {
-                    if (my_dataPool->isIdExist(fda->uuid)){
-                        my_dataPool->deleteImage(fda->uuid);
-                    }
-                    my_disk->deleteDataFromDiskIfExist(fda->uuid);
-                }else{
-                    if (my_dataPool->isIdExist(fda->uuid))
-                        isDataPoolAcceptImage = my_dataPool->addData(fda->uuid, ida);
-                    my_disk->setDataToDisk(fda->uuid, ida->image);
-                }
-            }
-
-
-
-
-            /////update database
-            if (!isSameFeed) {
-                FEED_DATA_WDL insertdb = {*fda, false};
-                my_db_feed->pushDataToDb(fda->uuid, insertdb);
-            }
-            ////// update client
-
-            my_client->update(copiedUuid, !isSameFeed, imageUpdate && (!shouldDeleteImage),
-                              false, shouldDeleteImage);
-
-            /////// delete if it not needed by datapool
-            if (!isDataPoolAcceptFeed)
-                delete fda;
-            if ((!isDataPoolAcceptImage) && (imageUpdate) && (!shouldDeleteImage))
-                delete ida;
-
-
-
-            /////////////// prepare for return
-            unlockAll();
-            http_response http_response(status_codes::OK);
-            // Send the response
-            request.reply(http_response).wait();
-            return;
-
-        }).wait();
-
+        }else{
+            shouldDeleteImage = true;
+        }
     }
+    ///////////////////////////////////// check storage integrity
+    lockAll();
+    bool integrity  = false;
+    if (my_dataPool->isIdExistAndNotDeleted(uuid)){
+        integrity = true;
+    }else if (my_dataPool->isConsistent()) { ///// not exist or deleted
+        integrity = false;
+    }else if (  my_db_feed->areThereKey(fda->uuid)){
+        integrity  =true;
+    }
+    if (!integrity) {
+        res.code = 404;
+        // Send the response
+        res.end();
+        unlockAll();
+        return;
+    }
+    ///////////////////////////////////// update data to system
+    ////////////// so we can assume that if uuid is exist at the database, there is no deletion at that uuid
+    bool isDataPoolAcceptFeed  = false;
+    bool isDataPoolAcceptImage = false;
+    /////// check is it same feed so we will not trigger client to update
+    bool isSameFeed = false;
+    if (my_dataPool->isIdExistAndNotDeleted(uuid)){
+        auto oldData = my_dataPool->getFeedData(fda->uuid);
+        isSameFeed = (oldData != nullptr) && ((*oldData) == (*fda));
+    }
+    /////update data pool and disk
+    isDataPoolAcceptFeed = my_dataPool->addData(fda->uuid, fda);
+    if ( imageUpdate ){
+        if (shouldDeleteImage) {
+            if (my_dataPool->isIdExist(fda->uuid)){
+                my_dataPool->deleteImage(fda->uuid);
+            }
+            my_disk->deleteDataFromDiskIfExist(fda->uuid);
+        }else{
+            if (my_dataPool->isIdExist(fda->uuid))
+                isDataPoolAcceptImage = my_dataPool->addData(fda->uuid, ida);
+            my_disk->setDataToDisk(fda->uuid, ida->image);
+        }
+    }
+    /////update database
+    if (!isSameFeed) {
+        FEED_DATA_WDL insertdb = {*fda, false};
+        my_db_feed->pushDataToDb(fda->uuid, insertdb);
+    }
+    ////// update client
+    my_client->update(uuid, !isSameFeed, imageUpdate && (!shouldDeleteImage),
+                      false, shouldDeleteImage);
+    /////// delete if it not needed by datapool
+    if (!isDataPoolAcceptFeed)
+        delete fda;
+    if ((!isDataPoolAcceptImage) && (imageUpdate) && (!shouldDeleteImage))
+        delete ida;
+    /////////////// prepare for return
+    unlockAll();
+    res.code = 204;
+    res.end();
+
 }
 
-void CONTROLLER::deleteHandler(http_request& request) {
-    cout << request.relative_uri().path();
-    string path = request.relative_uri().path();
-    if ((request.method() == methods::PUT) && (path.substr(0, 14) == "/api/messages/")) {
 
-        string uuid = path.substr(14, path.size());
-
-
+void CONTROLLER::deleteHandler(const request& req, response& res, string uuid) {
         lockAll();
         /////////////////////////// delete integritry
         bool deleteIntegrity = false;
@@ -251,9 +191,9 @@ void CONTROLLER::deleteHandler(http_request& request) {
         //////////////////////////////////////////////////
 
         if (!deleteIntegrity) {
-            http_response http_response(404);
-            // Send the response
-            request.reply(http_response).wait();
+
+            res.code = 404;
+            res.end();
             unlockAll();
             return;
         }
@@ -270,40 +210,32 @@ void CONTROLLER::deleteHandler(http_request& request) {
         my_client->update(uuid, false, false, true, false);
 
         unlockAll();
-        http_response http_response(status_codes::OK);
-        // Send the response
-        request.reply(http_response).wait();
 
-
-    }
-
+        res.code = 204;
+        res.end();
 }
 
 
-void CONTROLLER::getMethod(http_request &request) {
-    cout << request.relative_uri().path();
-    string path = request.relative_uri().path();
-    if ((request.method() == methods::GET) && (path.size() >= 14)  && (path.substr(0, 14) == "/api/messages/")) {
+
+void CONTROLLER::getMethod(const request& req, response& res) {
 
         lockAll();
 
         vector<unsigned char>* resultsPointer;
         unique_lock<mutex>* bufferLock;
-
-        my_client->dispatch(resultsPointer, bufferLock);
+        bool newJournal;
+        my_client->dispatch(res.body, newJournal);
 
 
         unlockAll();
-        http_response http_response(status_codes::OK);
-        http_response.set_body(*resultsPointer);
-        request.reply(http_response).wait();
 
-        delete resultsPointer;
-        bufferLock->unlock();
+        res.code = 200 + newJournal;
+        res.set_header("Content-Type", "application/octet-stream");
+        // send the response
+        res.end();
 
 
     }
-}
 
 void
 CONTROLLER::lockAll(){

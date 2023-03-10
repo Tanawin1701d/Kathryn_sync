@@ -29,6 +29,8 @@ struct FEED_DATA{
 
 struct IMAGE_DATA{
     std::string image;
+
+
 };
 
 struct MACRO_DATA{

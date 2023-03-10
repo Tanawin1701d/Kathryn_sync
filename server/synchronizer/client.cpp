@@ -50,7 +50,7 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
         tempToUpdate = {false, false, true, false};
     } else {
         tempToUpdate.needFeed |= needFeed;
-        tempToUpdate.needImage = !needDeleteImage && (tempToUpdate.needImage || needImage);
+        tempToUpdate.needImage = (!needDeleteImage) && (tempToUpdate.needImage || needImage);
         tempToUpdate.shouldDeleted = false;
         tempToUpdate.shouldDeleteImage = needDeleteImage;
     }
@@ -60,6 +60,8 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
     trySaveToCache(uuid, tempToUpdate);
     myDBconnect_jor->pushDataToDb(uuid, tempToUpdate);
     tryToEvict();
+
+    //////////// unlock mutex
     PENDING_MUTEX.unlock();
     myDBconnect_jor->unlock();
 }
@@ -122,21 +124,21 @@ void CLIENT::tryReMakePendingList(){
 
 }
 
-void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buffMutex, bool& reqNewJor) {
+void CLIENT::dispatch(string& results,  bool& reqNewJor) {
 
     ////// lock to see which is next to get data from
     NEXT_MUTEX.lock();
 
     BUF_LABEL  currentBucket = nextToStream;
 
-    vector<unsigned char>*      buffer;
+    string*      buffer;
     BUF_STATE* buffer_state;
     bool*      buffer_reqNewJor;
     mutex*     buffer_mutex;
     condition_variable* buffer_to_dis_sig_convar;
 
     //////// select data for retrieve
-    buffer                   = (currentBucket == BUF_LABEL::A) ?  A_BUFFER        : B_BUFFER;
+    buffer                   = (currentBucket == BUF_LABEL::A) ? &A_BUFFER        :&B_BUFFER;
     buffer_state             = (currentBucket == BUF_LABEL::A) ? &A_STATE         :&B_STATE;
     buffer_reqNewJor         = (currentBucket == BUF_LABEL::A) ? &A_REQ_NEW_JN    :&B_REQ_NEW_JN;
     buffer_mutex             = (currentBucket == BUF_LABEL::A) ? &A_MUTEX         :&B_MUTEX;
@@ -160,6 +162,10 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
                                        );
     }
 
+    swap(*buffer, results);
+    reqNewJor = buffer_reqNewJor;
+    uqBuffer->unlock();
+
     //////////// signal future thread to run while it is sending
     NEXT_MUTEX.lock();
     nextToStream = (currentBucket == BUF_LABEL::B) ?  A : B;
@@ -168,14 +174,10 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
 
     sigFromDisToAB.notify_one();
 
-    results = buffer;
-    buffMutex = uqBuffer;
-    reqNewJor = buffer_reqNewJor;
-
 }
 
 [[noreturn]] void CLIENT::runAhead(){
-
+    uint64_t execTimes = 0;
     while(true){
 
         /////// wait for master to run start signal
@@ -183,17 +185,18 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
         sigFromDisToAB.wait(uq, [this] (){ return reqRunAhead;});
         reqRunAhead = false;
 
-
         BUF_LABEL  currentBucket = nextToStream;
         uq.unlock();
+
+        cout << "start runAhead exetion " << execTimes << endl;
         /////// pointer to buffer
-        vector<unsigned char>*      buffer;
+        string*    buffer;
         BUF_STATE* buffer_state;
         bool*      buffer_reqNewJor;
         mutex*     buffer_mutex;
         condition_variable* buffer_to_dis_sig_convar;
         //////// select data for retrieve
-        buffer                   = (currentBucket == BUF_LABEL::A) ?  A_BUFFER        : B_BUFFER;
+        buffer                   = (currentBucket == BUF_LABEL::A) ? &A_BUFFER        :&B_BUFFER;
         buffer_state             = (currentBucket == BUF_LABEL::A) ? &A_STATE         :&B_STATE;
         buffer_reqNewJor         = (currentBucket == BUF_LABEL::A) ? &A_REQ_NEW_JN    :&B_REQ_NEW_JN;
         buffer_mutex             = (currentBucket == BUF_LABEL::A) ? &A_MUTEX         :&B_MUTEX;
@@ -236,11 +239,12 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
         buffer_to_dis_sig_convar->notify_one();
         /////////////////////////////////////////////////////////////////
 
+        cout << "finish runAhead exetion " << execTimes++ << endl;
     }
 
 }
 
-bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
+bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
     *buffer_reqNewJor = reqNewJournalVersion;
     reqNewJournalVersion = false;
     tryReMakePendingList();
@@ -249,7 +253,7 @@ bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
     vector<FEED_DATA_WDL> feedDBToRet;
     vector<string>        uuidDBToRet;
     /////////// dicision to send data and prepare to get data from db;
-    uint64_t preSendSize = 0;
+    uint64_t preSendSize      = 0;
     int      currentBatchIter = 0;
     for (auto & iter : pendingList){
         string uuid = iter.first;
@@ -285,16 +289,19 @@ bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
     /////////// compact data and send back to
     string lastUUID;
     int retrieved = 0;
-    buffer = new vector<unsigned char>;
+    buffer->clear();
     buffer->reserve(MAX_BUFFER_SIZE);
     msg preProto; //// prepare for protobuffer
+
     while(retrieved < currentBatchIter){
         ////////////////// pre execution
         auto iter = pendingList.begin();
-        string uuid = iter->first;
-        REQ_DATA  reqDes = iter->second; ///request command
+        string    uuid       = iter->first;
+        REQ_DATA  reqDes     = iter->second; ///request command
+        lastUUID             = uuid;
+        ////// this is used when image is loaded from disk but if it is used from data pool this field is ignore
+        string    imageFromDisk;
         preProto.Clear();
-        lastUUID = uuid;
         /////////////////////////////////////////////////
         preProto.set_uuid(uuid);
         if (reqDes.shouldDeleted){
@@ -329,6 +336,7 @@ bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
                 }
             }
             //////// set image
+
             if (reqDes.needImage){
                 bool getFromDataPool = false;
                 if (myDataPool->isIdExistAndNotDeleted(uuid)){
@@ -340,27 +348,26 @@ bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
                 }
 
                 if (!getFromDataPool){
-                    auto* imageFromDisk = new string();
-                    myDISKconnect->getDataFromDisk(uuid, *imageFromDisk);
-                    preProto.set_allocated_image(imageFromDisk);
+                    myDISKconnect->getDataFromDisk(uuid, imageFromDisk);
+                    preProto.set_image(imageFromDisk);
                 }
             }
 
         }
 
         ///////////////////////////////////////////////// write to google proto buffer
-        size_t currentSize = preProto.ByteSizeLong();
-        buffer->resize(buffer->size() + currentSize);
-        preProto.SerializeWithCachedSizesToArray((uint8_t*)(&buffer[buffer->size() - currentSize]));
+        //size_t currentSize = preProto.ByteSizeLong();
+        //buffer->resize(buffer->size() + currentSize);
+        //preProto.SerializeWithCachedSizesToArray((uint8_t*)(&buffer[buffer->size() - currentSize]));
+        (*buffer) += preProto.SerializeAsString();
         myDataPool->notifyToFreeImage(uuid); //// please remind that free image is freely to use
         ///////////////// jump to next
         retrieved++;
         pendingList.erase(iter);
     }
-    if ((currentBatchIter != 0)){
+    if (currentBatchIter != 0){
         myDBconnect_jor->notifyToClearDb(lastUUID);
     }
-
 
     return false;
 }

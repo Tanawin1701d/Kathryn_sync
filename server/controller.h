@@ -10,6 +10,9 @@
 #include "persistIo/diskCtrl.h"
 #include "persistIo/ioCtrlFeed.h"
 #include "synchronizer/client.h"
+#include "crow.h"
+
+using namespace crow;
 
 class CONTROLLER{
 private:
@@ -27,10 +30,10 @@ public:
                DB_CONNECT_JOR*    _my_db_jor
                );
 
-    void postHandler(http_request& request);
-    void putHandler (http_request& request);
-    void deleteHandler(http_request& request);
-    void getMethod(http_request& request);
+    void postHandler(const request& req, response& res);
+    void putHandler (const request& req, response& res, string uuid);
+    void deleteHandler(const request& req, response& res, string uuid);
+    void getMethod(const request& req, response& res);
     void lockAll();
     void unlockAll();
 
