@@ -37,7 +37,9 @@ enum BUF_LABEL{
     A,B
 };
 
-
+/////////// in client except runahead executor
+////////////////// data pool disk and feed db is locked by controller
+////////////////// so please do lock again
 
 class CLIENT{
 
@@ -78,12 +80,14 @@ private:
     //////// bufferA variable
     vector<unsigned char>* A_BUFFER;
     BUF_STATE A_STATE;
+    bool      A_REQ_NEW_JN;
     mutex A_MUTEX;
     condition_variable sigFromAToDis;
 
     /////// bufferB variable
     vector<unsigned char>* B_BUFFER;
     BUF_STATE B_STATE;
+    bool      B_REQ_NEW_JN;
     mutex B_MUTEX;
     condition_variable sigFromBToDis;
 
@@ -98,10 +102,10 @@ public:
     void trySaveToCache(string uuid, REQ_DATA& tempToUpdate);
     void tryReMakePendingList();
     //////////////// for client to get data
-    void dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buffMutex);
+    void dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buffMutex,bool& reqNewJor);
     //////////////// the retriever to retrieve data from datapool database and disk to memory
     ////////////////////////no need to concern about race condition here
-    bool recruit(vector<unsigned char>* buffer); // return true if request new journal version
+    bool recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor); // return true if request new journal version
 
     //////////////// runAhead Thread which call recruit method
     [[noreturn]] void runAhead();

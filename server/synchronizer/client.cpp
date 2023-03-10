@@ -13,14 +13,20 @@ CLIENT::CLIENT(DATAPOOL*        _myDataPool,
         myDISKconnect   (_myDISKconnect),
         myDBconnect_feed(_myDBconnect_feed),
         myDBconnect_jor (_myDBconnect_jor),
-        isConsistent(false)
+        isConsistent(false),
+        A_STATE(EMPTY),
+        B_STATE(EMPTY)
 {
     tryReMakePendingList();
 }
 
 void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete, bool needDeleteImage) {
+
+    /////////////////////// lock mutex
     PENDING_MUTEX.lock();
     myDBconnect_jor->lock();
+    //////////////////////////////////////////////
+
 
     reqNewJournalVersion = true;
     /////// finder there are exist at memory
@@ -28,6 +34,7 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
 
     auto finder = pendingList.find(uuid);
 
+    ///////// get old data for build journal sumation
     if (finder != pendingList.end()) {
         tempToUpdate = finder->second;
     } else if (!isConsistent) {
@@ -37,6 +44,7 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
         }
     }
 
+    ///////////// build new journal
     /////////////////////////////////////////////////////////////////////////
     if (needDelete) {
         tempToUpdate = {false, false, true, false};
@@ -68,15 +76,19 @@ void CLIENT::trySaveToCache(string uuid, REQ_DATA &tempToUpdate) {
 
     auto finder = pendingList.find(uuid);
 
+    //// just update due to same uuid journal
     if (finder != pendingList.end()){
         finder->second = tempToUpdate;
         return;
     }
 
+    /// incase it is consistent so it is freely inserted
     if ( isConsistent ){
         pendingList.insert({uuid, tempToUpdate});
         return;
     }
+
+    /// case it can be insertablle due to inbound uuid
 
     if ( (pendingList.rbegin() != pendingList.rend()) && (pendingList.rbegin()->first > uuid)){
         pendingList.insert({uuid, tempToUpdate});
@@ -90,10 +102,11 @@ void CLIENT::trySaveToCache(string uuid, REQ_DATA &tempToUpdate) {
 void CLIENT::tryReMakePendingList(){
 
 
-    if (pendingList.size() > MIN_PENDING_LIST_SIZE){
+    if (pendingList.size() > 0){
         return;
     }
 
+    /////// clear it all due to backed up by db already.
     pendingList.clear();
     auto rawJor = myDBconnect_jor->getBatchData();
 
@@ -109,7 +122,7 @@ void CLIENT::tryReMakePendingList(){
 
 }
 
-void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buffMutex) {
+void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buffMutex, bool& reqNewJor) {
 
     ////// lock to see which is next to get data from
     NEXT_MUTEX.lock();
@@ -118,14 +131,16 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
 
     vector<unsigned char>*      buffer;
     BUF_STATE* buffer_state;
+    bool*      buffer_reqNewJor;
     mutex*     buffer_mutex;
     condition_variable* buffer_to_dis_sig_convar;
 
     //////// select data for retrieve
-    buffer                   = currentBucket == BUF_LABEL::A ?  A_BUFFER        : B_BUFFER;
-    buffer_state             = currentBucket == BUF_LABEL::A ? &A_STATE         :&B_STATE;
-    buffer_mutex             = currentBucket == BUF_LABEL::A ? &A_MUTEX         :&B_MUTEX;
-    buffer_to_dis_sig_convar = currentBucket == BUF_LABEL::A ? &sigFromAToDis   :&sigFromBToDis;
+    buffer                   = (currentBucket == BUF_LABEL::A) ?  A_BUFFER        : B_BUFFER;
+    buffer_state             = (currentBucket == BUF_LABEL::A) ? &A_STATE         :&B_STATE;
+    buffer_reqNewJor         = (currentBucket == BUF_LABEL::A) ? &A_REQ_NEW_JN    :&B_REQ_NEW_JN;
+    buffer_mutex             = (currentBucket == BUF_LABEL::A) ? &A_MUTEX         :&B_MUTEX;
+    buffer_to_dis_sig_convar = (currentBucket == BUF_LABEL::A) ? &sigFromAToDis   :&sigFromBToDis;
     reqRunAhead  = false;
     NEXT_MUTEX.unlock();
 
@@ -136,7 +151,7 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
     if (*buffer_state == EMPTY){
         PENDING_MUTEX.lock();
         myDBconnect_jor->lock();
-        recruit(buffer);
+        recruit(buffer, buffer_reqNewJor);
         PENDING_MUTEX.unlock();
         myDBconnect_jor->unlock();
     }else if (*buffer_state == PROCESSING){
@@ -147,7 +162,7 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
 
     //////////// signal future thread to run while it is sending
     NEXT_MUTEX.lock();
-    nextToStream = currentBucket == BUF_LABEL::B ?  A : B;
+    nextToStream = (currentBucket == BUF_LABEL::B) ?  A : B;
     reqRunAhead  = true;
     NEXT_MUTEX.unlock();
 
@@ -155,7 +170,7 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
 
     results = buffer;
     buffMutex = uqBuffer;
-
+    reqNewJor = buffer_reqNewJor;
 
 }
 
@@ -164,56 +179,75 @@ void CLIENT::dispatch(vector<unsigned char>*& results, unique_lock<mutex>*& buff
     while(true){
 
         /////// wait for master to run start signal
-
         unique_lock<mutex> uq(NEXT_MUTEX);
-
         sigFromDisToAB.wait(uq, [this] (){ return reqRunAhead;});
         reqRunAhead = false;
+
+
         BUF_LABEL  currentBucket = nextToStream;
         uq.unlock();
+        /////// pointer to buffer
         vector<unsigned char>*      buffer;
         BUF_STATE* buffer_state;
+        bool*      buffer_reqNewJor;
         mutex*     buffer_mutex;
+        condition_variable* buffer_to_dis_sig_convar;
         //////// select data for retrieve
-        buffer                   = currentBucket == BUF_LABEL::A ?  A_BUFFER        : B_BUFFER;
-        buffer_state             = currentBucket == BUF_LABEL::A ? &A_STATE         :&B_STATE;
-        buffer_mutex             = currentBucket == BUF_LABEL::A ? &A_MUTEX         :&B_MUTEX;
+        buffer                   = (currentBucket == BUF_LABEL::A) ?  A_BUFFER        : B_BUFFER;
+        buffer_state             = (currentBucket == BUF_LABEL::A) ? &A_STATE         :&B_STATE;
+        buffer_reqNewJor         = (currentBucket == BUF_LABEL::A) ? &A_REQ_NEW_JN    :&B_REQ_NEW_JN;
+        buffer_mutex             = (currentBucket == BUF_LABEL::A) ? &A_MUTEX         :&B_MUTEX;
+        buffer_to_dis_sig_convar = (currentBucket == BUF_LABEL::A) ? &sigFromAToDis   :&sigFromBToDis;
 
-        ///////// lock buffer mutex
+
+        ///////// lock buffer mutex and other resource because runahead is detached from passing controller thread
+        myDataPool->lock();
+        myDISKconnect->lock();
+        myDBconnect_feed->lock();
         buffer_mutex->lock();
 
         switch (*buffer_state){
 
             case EMPTY:{
+                ///// change status
                 *buffer_state = PROCESSING;
+                ///// lock pending and jor connector mutex
                 PENDING_MUTEX.lock();
                 myDBconnect_jor->lock();
-                recruit(buffer);
+
+                //// run worker
+                recruit(buffer, buffer_reqNewJor);
+
+                //// unlock the locked mutex
                 PENDING_MUTEX.unlock();
                 myDBconnect_jor->unlock();
                 *buffer_state = READY;
                 break;
             }
             case PROCESSING:
-                break;
             case READY:
                 break;
         }
 
+        myDataPool->unlock();
+        myDISKconnect->unlock();
+        myDBconnect_feed->unlock();
         buffer_mutex->unlock();
+        buffer_to_dis_sig_convar->notify_one();
         /////////////////////////////////////////////////////////////////
 
     }
 
 }
 
-bool CLIENT::recruit(vector<unsigned char>* buffer) {
-
+bool CLIENT::recruit(vector<unsigned char>* buffer, bool* buffer_reqNewJor) {
+    *buffer_reqNewJor = reqNewJournalVersion;
+    reqNewJournalVersion = false;
     tryReMakePendingList();
 
     ////// prepare data to get from db
     vector<FEED_DATA_WDL> feedDBToRet;
-    vector<string>    uuidDBToRet;
+    vector<string>        uuidDBToRet;
     /////////// dicision to send data and prepare to get data from db;
     uint64_t preSendSize = 0;
     int      currentBatchIter = 0;

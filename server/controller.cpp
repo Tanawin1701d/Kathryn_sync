@@ -50,7 +50,7 @@ CONTROLLER::postHandler(http_request& request)
                                     if (my_dataPool->isIdExist(fda->uuid)){
                                         integrity = my_dataPool->isDeletedId(fda->uuid);
                                     }else if (my_dataPool->isConsistent()){
-                                        integrity = !my_dataPool->isIdExist(fda->uuid);
+                                        integrity = false;
                                     }else if (!my_db_feed->areThereKey(fda->uuid)){
                                         integrity  =true;
                                     }
@@ -62,7 +62,7 @@ CONTROLLER::postHandler(http_request& request)
                                         /////// in-case push is flawn
                                         http_response http_response(409);
                                         // Send the response
-                                        request.reply(http_response);
+                                        request.reply(http_response).wait();
                                         unlockAll();
                                         return;
                                     }
@@ -74,6 +74,7 @@ CONTROLLER::postHandler(http_request& request)
                                     /////update data pool and disk
                                     isDataPoolAcceptFeed = my_dataPool->addData(fda->uuid, fda);
 
+                                    //// update image to disk and cache if it neccessary
                                     if ( imageUpdate ){
                                         if (my_dataPool->isIdExist(fda->uuid))
                                             isDataPoolAcceptImage = my_dataPool->addData(fda->uuid, ida);
@@ -100,7 +101,7 @@ CONTROLLER::postHandler(http_request& request)
                                     unlockAll();
                                     http_response http_response(status_codes::OK);
                                     // Send the response
-                                    request.reply(http_response);
+                                    request.reply(http_response).wait();
                                     return;
 
                                 }
@@ -114,7 +115,7 @@ CONTROLLER::putHandler(http_request& request){
 
     cout << request.relative_uri().path();
     string path = request.relative_uri().path();
-    if ( (request.method() == methods::PUT) && (path.substr(0,14) == "/api/messages/")){
+    if ( (request.method() == methods::PUT) && (path.size() > 14)  && (path.substr(0,14) == "/api/messages/") ){
 
         string uuid = path.substr(14,path.size()-14);
 
@@ -160,7 +161,7 @@ CONTROLLER::putHandler(http_request& request){
             if (!integrity) {
                 http_response http_response(404);
                 // Send the response
-                request.reply(http_response);
+                request.reply(http_response).wait();
 
                 unlockAll();
                 return;
@@ -220,7 +221,7 @@ CONTROLLER::putHandler(http_request& request){
             unlockAll();
             http_response http_response(status_codes::OK);
             // Send the response
-            request.reply(http_response);
+            request.reply(http_response).wait();
             return;
 
         }).wait();
@@ -252,7 +253,7 @@ void CONTROLLER::deleteHandler(http_request& request) {
         if (!deleteIntegrity) {
             http_response http_response(404);
             // Send the response
-            request.reply(http_response);
+            request.reply(http_response).wait();
             unlockAll();
             return;
         }
@@ -261,7 +262,7 @@ void CONTROLLER::deleteHandler(http_request& request) {
         if (my_dataPool->isIdExist(uuid)) {
             my_dataPool->deleteData(uuid); //// we can assume that it is not deleted data
         }
-        FEED_DATA_WDL fdw = {{}, true};
+        FEED_DATA_WDL fdw = {{uuid, "", "", 0}, true};
         my_db_feed->pushDataToDb(uuid, fdw);
 
         my_disk->deleteDataFromDiskIfExist(uuid);
@@ -271,7 +272,7 @@ void CONTROLLER::deleteHandler(http_request& request) {
         unlockAll();
         http_response http_response(status_codes::OK);
         // Send the response
-        request.reply(http_response);
+        request.reply(http_response).wait();
 
 
     }
@@ -282,7 +283,7 @@ void CONTROLLER::deleteHandler(http_request& request) {
 void CONTROLLER::getMethod(http_request &request) {
     cout << request.relative_uri().path();
     string path = request.relative_uri().path();
-    if ((request.method() == methods::GET) && (path.substr(0, 14) == "/api/messages/")) {
+    if ((request.method() == methods::GET) && (path.size() >= 14)  && (path.substr(0, 14) == "/api/messages/")) {
 
         lockAll();
 
@@ -292,14 +293,14 @@ void CONTROLLER::getMethod(http_request &request) {
         my_client->dispatch(resultsPointer, bufferLock);
 
 
-
+        unlockAll();
         http_response http_response(status_codes::OK);
         http_response.set_body(*resultsPointer);
         request.reply(http_response).wait();
 
         delete resultsPointer;
         bufferLock->unlock();
-        unlockAll();
+
 
     }
 }

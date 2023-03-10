@@ -106,7 +106,7 @@ add_executable(
 
         midterm
 
-        #main.cpp
+        main.cpp
 
         dataPool/model.h
         dataPool/model.cpp
@@ -136,8 +136,8 @@ add_executable(
         #test/test_datapool.cpp
         #test/test_disk.cpp
         #test/test_feed.cpp
-        test/test_jor.cpp
-
+        #test/test_jor.cpp
+        #test/test_client.cpp
 )
 
 
