@@ -9,6 +9,8 @@ int main() {
 
         pid_t pid = getpid();
 
+
+
         printf("pid: %lu\n", pid);
 
         //////// create class
@@ -21,11 +23,12 @@ int main() {
 
 
         ///////// create runAhead thread
-        auto proxyFuc = [](CLIENT* cl){cl->runAhead();};
-        thread rh(proxyFuc, myClient);
+//        auto proxyFuc = [](CLIENT* cl){cl->runAhead();};
+//        thread rh(proxyFuc, myClient);
 
 
         crow::SimpleApp app;
+
 
         crow::logger::setLogLevel(crow::LogLevel::WARNING);
 
@@ -50,7 +53,7 @@ int main() {
             ctrl->deleteHandler(req, res, std::move(uuid));
         });
 
-        app.port(8080).run();
+        app.port(8080).multithreaded().run();
 
         cout << "system is started" << endl;
         while(true){

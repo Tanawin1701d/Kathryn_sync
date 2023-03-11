@@ -220,20 +220,15 @@ void CONTROLLER::deleteHandler(const request& req, response& res, string uuid) {
 void CONTROLLER::getMethod(const request& req, response& res) {
 
         lockAll();
-
         bool newJournal;
         my_client->dispatch(res.body, newJournal);
-
-
         unlockAll();
 
         res.code = 200 + newJournal;
-        res.set_header("Content-Type", "application/octet-stream");
-        // send the response
         res.end();
 
 
-    }
+}
 
 void
 CONTROLLER::lockAll(){

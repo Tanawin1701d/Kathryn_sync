@@ -18,7 +18,7 @@ print("now program is targeting to ", url)
 
 
 dataDt = np.dtype({'names': ['uuid', 'author', 'message', 'likes', 'image'],
-               'formats': ['U36', 'U64', 'U1024', np.int32, np.bool]})
+               'formats': ['U36', 'U64', 'U1024', np.int32, bool]})
 msgDt = np.dtype({'names': ['uuid', 'author', 'message', 'likes', 'image', 'needFeed', 'needImage', 'isDelete', 'isImageDelete'],
                'formats': ['U36', 'U64', 'U1024', np.int32, object, bool, bool, bool, bool]})
 
@@ -26,7 +26,8 @@ msgDt = np.dtype({'names': ['uuid', 'author', 'message', 'likes', 'image', 'need
 jorData        = None
 currentJorIter = 0
 lastJorIter    = 0
-#### 
+####  stat
+genereated     = 0
 
 ######################## write buffer to file
 MAX_WRITE_BUFFER = 1000
@@ -39,6 +40,7 @@ resultFile      = None
 resultName      = getattr(args, "r")
 
 def tryFlush(forceFlush = False):
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
     if (not forceFlush) and (writeBuffer.size < MAX_WRITE_BUFFER):
         return
     for dayta in writeBuffer:
@@ -58,10 +60,14 @@ def tryFlush(forceFlush = False):
 
 # this function is used to merge existing data with new data inspired from merge sort algorithm
 def merge(newArr):  # it is msgDt
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
     lastMsgIter = newArr.shape[0]
     currentMsgIter = 0
 
     while( currentMsgIter < lastMsgIter ):
+        
+        ### for stat tracking
+        genereated = genereated + 1
         
 
         if ((currentJorIter == lastJorIter) or (jorData[currentJorIter]["uuid"] > newArr[currentMsgIter]["uuid"])):
@@ -74,7 +80,7 @@ def merge(newArr):  # it is msgDt
             elif not newArr[currentMsgIter]["isImageDelete"]:
                 if newArr[currentMsgIter]["needImage"]:
                     needImage = True
-                    imageFile = open( "images/" + newArr[currentMsgIter]["uuid"],'w')
+                    imageFile = open( "images/" + newArr[currentMsgIter]["uuid"],'wb')
                     imageFile.write(newArr[currentMsgIter]["image"])
                     imageFile.close()
 
@@ -122,7 +128,7 @@ def merge(newArr):  # it is msgDt
             
             ### write image to file
             if NeedImageInternet:
-                imageFile = open( "images/" + newArr[currentMsgIter]["uuid"],'w')
+                imageFile = open( "images/" + newArr[currentMsgIter]["uuid"],'wb')
                 imageFile.write(newArr[currentMsgIter]["image"])
                 imageFile.close()
 
@@ -147,18 +153,20 @@ def merge(newArr):  # it is msgDt
 
 
 def getReq():
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
 
     while (True):
         # fetch new data from server until there isn't any new data left
         response = requests.get(url)
+        print ("finished")
         body = np.frombuffer( response.content, dtype=np.uint8) # for now body is numpy array
-
+        
     
-        if (body.size() == 0):
+        if (body.shape[0] == 0):
             break # in-case we know that it is exited
 
         decodedBatch = np.array([], dtype=msgDt)
-        while(body):
+        while(body.any()):
             sizeOfMessage = struct.unpack("<I", body[:4])[0]
             readMsg = msg_pb2.msg()
             readMsg.ParseFromString(body[4: 4 + sizeOfMessage])
@@ -171,7 +179,10 @@ def getReq():
             body = body[4 + sizeOfMessage:]
 
         #### TODO make it multithread
+        print("system merging @generated items =",genereated)
         merge(decodedBatch)
+        print("system finished merge @generated items =",genereated)
+
 
 
 

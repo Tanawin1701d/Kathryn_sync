@@ -56,10 +56,11 @@ private:
     map<string, REQ_DATA> pendingList;
     bool reqNewJournalVersion = true;
     bool isConsistent;
+    int  amountrecruit = 0;
 
     /////// constant to prevent memory leak
-    uint64_t MAX_BUFFER_SIZE = ((uint64_t) 1) << 27;
-    uint64_t MAX_BUFFER_IMAGE_SIZE = MAX_BUFFER_SIZE - (((uint64_t) 1) << 23);
+    uint64_t MAX_BUFFER_SIZE = ((uint64_t) 1) << 25;
+    uint64_t MAX_BUFFER_IMAGE_SIZE = MAX_BUFFER_SIZE;
     uint16_t MAX_MESSAGE_TO_UPDATE = 1000;
     uint32_t MAX_PENDING_LIST_SIZE = 1000000;
     uint32_t MIN_PENDING_LIST_SIZE = 100;
@@ -86,6 +87,8 @@ private:
     bool      B_REQ_NEW_JN;
     mutex B_MUTEX;
     condition_variable sigFromBToDis;
+
+
 
 public:
     CLIENT(DATAPOOL*        _myDataPool,

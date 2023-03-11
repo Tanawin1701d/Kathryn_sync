@@ -343,7 +343,7 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
                 if (myDataPool->isIdExistAndNotDeleted(uuid)){
                     auto ida = myDataPool->getImageData(uuid);
                     if (ida != nullptr){
-                        preProto.set_allocated_image(&ida->image);
+                        preProto.set_image(ida->image);
                         getFromDataPool = true;
                     }
                 }
@@ -362,8 +362,10 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
         myDataPool->notifyToFreeImage(uuid); //// please remind that free image is freely to use
         ///////////////// jump to next
         retrieved++;
+        amountrecruit++;
         pendingList.erase(iter);
     }
+    cout << "now we recruit : " << amountrecruit << endl;
     if (currentBatchIter != 0){
         myDBconnect_jor->notifyToClearDb(lastUUID);
     }
