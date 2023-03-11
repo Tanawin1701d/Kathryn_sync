@@ -356,9 +356,6 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
         }
 
         ///////////////////////////////////////////////// write to google proto buffer
-        //size_t currentSize = preProto.ByteSizeLong();
-        //buffer->resize(buffer->size() + currentSize);
-        //preProto.SerializeWithCachedSizesToArray((uint8_t*)(&buffer[buffer->size() - currentSize]));
         (*buffer) += preProto.SerializeAsString();
         myDataPool->notifyToFreeImage(uuid); //// please remind that free image is freely to use
         ///////////////// jump to next

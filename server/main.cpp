@@ -27,6 +27,8 @@ int main() {
 
         crow::SimpleApp app;
 
+        crow::logger::setLogLevel(crow::LogLevel::WARNING);
+
         CROW_ROUTE(app, "/api/messages/").methods(crow::HTTPMethod::GET)
                 ([ctrl](const request& req, response& res){
                     ctrl->getMethod(req, res);
