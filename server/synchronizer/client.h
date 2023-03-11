@@ -106,6 +106,8 @@ public:
     //////////////// runAhead Thread which call recruit method
     [[noreturn]] void runAhead();
 
+    static string uintToByteString(uint32_t value);
+
 };
 
 #endif //MIDTERM_CLIENT_H

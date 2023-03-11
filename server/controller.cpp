@@ -93,7 +93,7 @@ void
 CONTROLLER::putHandler(const request& req, response& res, string uuid){
 
     auto json_obj = crow::json::load(req.body);
-    cout << req.body;
+    ///cout << req.body;
     auto *fda = new FEED_DATA{
         uuid,
         json_obj["author"].s(),
@@ -221,8 +221,6 @@ void CONTROLLER::getMethod(const request& req, response& res) {
 
         lockAll();
 
-        vector<unsigned char>* resultsPointer;
-        unique_lock<mutex>* bufferLock;
         bool newJournal;
         my_client->dispatch(res.body, newJournal);
 

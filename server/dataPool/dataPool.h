@@ -29,7 +29,7 @@ private:
     std::unordered_set<MACRO_DATA*> coh_image[COH_STATE::COH_COUNT];
 
     ////// size indicator and limitation
-    uint64_t LIMITSIZE  = ((uint64_t)1) << (30);  ///// size in byte
+    uint64_t LIMITSIZE  = (((uint64_t)1) << (30)) - (((uint64_t)1) << (27));  ///// size in byte  1024-128
     uint64_t LIMITKEY   = 300000;
     uint64_t amountKey  = 0;
     uint64_t amountSize = 0; //// size that value in storage is used
@@ -48,9 +48,9 @@ public:
     bool addData     (string& uuid, FEED_DATA* _fda); /// return add success
     //////// add data for image is NOT freely to use error when there is no uuid and IMAGE_DATA* must not nullptr
     bool addData     (string& uuid, IMAGE_DATA* _ida); /// return add success
-    //////// delete data is NOT freely to use error when there is no uuid and IMAGE_DATA* must not nullptr
+    //////// delete data is NOT freely to use // error when there is no uuid
     void deleteData  (string& uuid);
-    //////// delete image is NOT freely to use error when there is no uuid but image can exist or not exist
+    //////// delete image is NOT freely to use error when there is no uuid
     void deleteImage (string& uuid);
 
 

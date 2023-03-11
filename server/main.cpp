@@ -52,9 +52,6 @@ int main() {
 
         app.port(8080).run();
 
-
-
-
         cout << "system is started" << endl;
         while(true){
             string command;

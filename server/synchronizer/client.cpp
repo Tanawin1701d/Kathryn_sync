@@ -2,6 +2,7 @@
 // Created by tanawin on 4/3/2566.
 //
 
+#include <cstring>
 #include "client.h"
 
 
@@ -356,6 +357,7 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
         }
 
         ///////////////////////////////////////////////// write to google proto buffer
+        (*buffer) += uintToByteString((uint32_t)preProto.ByteSizeLong());
         (*buffer) += preProto.SerializeAsString();
         myDataPool->notifyToFreeImage(uuid); //// please remind that free image is freely to use
         ///////////////// jump to next
@@ -367,4 +369,11 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
     }
 
     return false;
+}
+
+std::string
+CLIENT::uintToByteString(uint32_t value) {
+    string bytesString(sizeof(uint32_t), 0);
+    memcpy(&bytesString[0], &value, sizeof(uint32_t));
+    return bytesString;
 }
