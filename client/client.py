@@ -176,7 +176,7 @@ def getReq():
         decodedBatch = np.array([], dtype=msgDt)
         while(body.any()):
             #to check message size but (must check that at server is little or big endian)(for now we check client instead during demo)
-            sizeOfMessage = struct.unpack("{}I".format("<" if (byteorder == "little") else ">"), body[:4])[0]
+            sizeOfMessage = struct.unpack("<I", body[:4])[0]
             readMsg = msg_pb2.msg()
                                         ###### size of message size indication is 4 byte
             readMsg.ParseFromString(body[4: 4 + sizeOfMessage])
