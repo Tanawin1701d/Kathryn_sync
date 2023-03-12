@@ -5,7 +5,8 @@
 #include <cassert>
 #include "dataPool.h"
 
-DATAPOOL::DATAPOOL():
+DATAPOOL::DATAPOOL(DISK_CONNECT* _myDisk):
+myDisk(_myDisk),
 consistent(true)
 {
 
@@ -41,13 +42,17 @@ bool DATAPOOL::addData(string &uuid, FEED_DATA *_fda) {
             return false;
         }
         amountKey++;
+
+        bool areThereImage   = myDisk->IsThereFile(uuid);
+        COH_STATE imageState = areThereImage ? COH_STATE::I : COH_STATE::U;
+
         MACRO_DATA* macroData =  new MACRO_DATA{nullptr, nullptr,
-                                                COH_STATE::I, COH_STATE::U,
+                                                COH_STATE::I, imageState,
                                                 false
         };
         finder = storage.insert({uuid, macroData}).first;
         coh_feed[COH_STATE::I].insert(macroData);
-        coh_image[COH_STATE::U].insert(macroData);
+        coh_image[imageState].insert(macroData);
         //// coherency tracking
     }
 

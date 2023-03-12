@@ -40,7 +40,15 @@ void DISK_CONNECT::setDataToDisk(string &uuid, string &result) {
 void DISK_CONNECT::deleteDataFromDiskIfExist(string &uuid) {
     /////// this will remove even if it not exist
     std::remove((prefixPath+uuid).c_str());
-    return;
+}
+
+bool DISK_CONNECT::IsThereFile(string &uuid) {
+
+    std::ifstream file(prefixPath+uuid);
+    bool result = file.is_open();
+    file.close();
+
+    return result;
 }
 
 void DISK_CONNECT::lock(){

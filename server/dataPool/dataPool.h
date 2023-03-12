@@ -11,6 +11,7 @@
 #include "model.h"
 #include "../persistIo/ioCtrlFeed.h"
 #include "../configvar.h"
+#include "../persistIo/diskCtrl.h"
 #include <mutex>
 
 using namespace std;
@@ -20,9 +21,13 @@ private:
     ////// mutex;
     mutex DPMUTEX;
 
+
+    DISK_CONNECT*  myDisk;
     ////// data and state tracking
     /////// we assume that uuid is not exceed memory request
     std::map<std::string, MACRO_DATA*> storage;
+
+
 
     bool consistent;
 
@@ -42,7 +47,7 @@ private:
 
 public:
 
-    DATAPOOL();
+    DATAPOOL(DISK_CONNECT* _myDisk);
     ////// newly come from sender
 
     //////// add data for feed is freely to use even there is no uuid but FEED_DATA* must not nullptr

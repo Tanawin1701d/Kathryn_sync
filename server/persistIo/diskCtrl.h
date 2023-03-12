@@ -29,6 +29,7 @@ public:
     void getDataFromDisk(string& uuid, string& result);
     void setDataToDisk(string& uuid, string& result);
     void deleteDataFromDiskIfExist(string& uuid);
+    bool IsThereFile(string& uuid);
 
     void lock();
     void unlock();
