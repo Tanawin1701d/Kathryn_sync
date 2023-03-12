@@ -59,7 +59,7 @@ private:
     int  amountrecruit = 0;
 
     /////// constant to prevent memory leak
-    uint64_t MAX_BUFFER_SIZE = ((uint64_t) 1) << 25;
+    uint64_t MAX_BUFFER_SIZE = ((uint64_t) 1) << 27;
     uint64_t MAX_BUFFER_IMAGE_SIZE = MAX_BUFFER_SIZE;
     uint16_t MAX_MESSAGE_TO_UPDATE = 1000;
     uint32_t MAX_PENDING_LIST_SIZE = 1000000;

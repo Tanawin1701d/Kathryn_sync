@@ -225,7 +225,9 @@ void CONTROLLER::getMethod(const request& req, response& res) {
         unlockAll();
 
         res.code = 200 + newJournal;
-        res.end();
+        res.set_header("Content-Length", to_string(res.body.size()));
+        res.set_header("Content-Type", "application/octet-stream");
+    res.end();
 
 
 }
