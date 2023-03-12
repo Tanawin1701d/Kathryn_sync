@@ -166,6 +166,7 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
     bool shouldRequestRunAhead = (!buffer->empty()); /// incase there is no buffer in this time we should not request runAhead to do anythings
     swap(*buffer, results);
     buffer->clear();
+    *buffer_state = EMPTY;
     reqNewJor = buffer_reqNewJor;
     uqBuffer->unlock();
 
