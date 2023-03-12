@@ -1,0 +1,3 @@
+/media/tanawin/tanawin1701e/Learning/cloud/midtermRepo/clientcpp/cmake-build-debug/CMakeFiles/clientcpp.dir
+/media/tanawin/tanawin1701e/Learning/cloud/midtermRepo/clientcpp/cmake-build-debug/CMakeFiles/edit_cache.dir
+/media/tanawin/tanawin1701e/Learning/cloud/midtermRepo/clientcpp/cmake-build-debug/CMakeFiles/rebuild_cache.dir
