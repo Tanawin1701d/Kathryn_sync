@@ -116,6 +116,11 @@ CONTROLLER::putHandler(const request& req, response& res, string uuid){
     }
     ///////////////////////////////////// check storage integrity
     lockAll();
+
+    if (uuid == "000000000000000000000000000000000090"){
+        cout << "deted";
+    }
+
     bool integrity  = false;
     if (my_dataPool->isIdExistAndNotDeleted(uuid)){
         integrity = true;
@@ -225,9 +230,7 @@ void CONTROLLER::getMethod(const request& req, response& res) {
         unlockAll();
 
         res.code = 200 + newJournal;
-        res.set_header("Content-Length", to_string(res.body.size()));
-        res.set_header("Content-Type", "application/octet-stream");
-    res.end();
+        res.end();
 
 
 }

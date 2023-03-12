@@ -139,7 +139,7 @@ add_executable(
         #test/test_jor.cpp
         #test/test_client.cpp
         #test/test_generatePb.cpp
-)
+        configvar.h)
 
 
 TARGET_LINK_LIBRARIES( midterm PRIVATE ${Boost_LIBRARIES}

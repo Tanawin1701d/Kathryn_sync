@@ -19,6 +19,7 @@ CLIENT::CLIENT(DATAPOOL*        _myDataPool,
         B_STATE(EMPTY)
 {
     tryReMakePendingList();
+    cout << "CLIENT SYNCRONIZER CONSISTENT IS SET TO " << isConsistent << endl;
 }
 
 void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete, bool needDeleteImage) {
@@ -40,7 +41,7 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
         tempToUpdate = finder->second;
     } else if (!isConsistent) {
         pair<JOURNALER, bool> tempJor = myDBconnect_jor->getData(uuid);
-        if (tempJor.second) {
+        if (tempJor.second) {  /// indicate that at server have the data or not
             tempToUpdate = tempJor.first.reqData;
         }
     }
@@ -60,7 +61,7 @@ void CLIENT::update(string& uuid,bool needFeed, bool needImage, bool needDelete,
     /////
     trySaveToCache(uuid, tempToUpdate);
     myDBconnect_jor->pushDataToDb(uuid, tempToUpdate);
-    tryToEvict();
+    tryToEvict(); //////// evict if cache is exceed
 
     //////////// unlock mutex
     PENDING_MUTEX.unlock();
@@ -162,15 +163,16 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
                                        [&buffer_state](){return *buffer_state == READY;}
                                        );
     }
-
+    bool shouldRequestRunAhead = (!buffer->empty()); /// incase there is no buffer in this time we should not request runAhead to do anythings
     swap(*buffer, results);
+    buffer->clear();
     reqNewJor = buffer_reqNewJor;
     uqBuffer->unlock();
 
     //////////// signal future thread to run while it is sending
     NEXT_MUTEX.lock();
     nextToStream = (currentBucket == BUF_LABEL::B) ?  A : B;
-    reqRunAhead  = true;
+    reqRunAhead  = shouldRequestRunAhead;
     NEXT_MUTEX.unlock();
 
     sigFromDisToAB.notify_one();
@@ -179,6 +181,7 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
 
 [[noreturn]] void CLIENT::runAhead(){
     uint64_t execTimes = 0;
+
     while(true){
 
         /////// wait for master to run start signal
@@ -189,7 +192,7 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
         BUF_LABEL  currentBucket = nextToStream;
         uq.unlock();
 
-        cout << "start runAhead exetion " << execTimes << endl;
+        cout << "start runAhead exetion " << execTimes++ << endl;
         /////// pointer to buffer
         string*    buffer;
         BUF_STATE* buffer_state;
@@ -298,6 +301,8 @@ bool CLIENT::recruit(string* buffer, bool* buffer_reqNewJor) {
         ////////////////// pre execution
         auto iter = pendingList.begin();
         string    uuid       = iter->first;
+
+
         REQ_DATA  reqDes     = iter->second; ///request command
         lastUUID             = uuid;
         ////// this is used when image is loaded from disk but if it is used from data pool this field is ignore

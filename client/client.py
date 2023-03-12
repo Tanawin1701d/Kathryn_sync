@@ -1,3 +1,4 @@
+from sys import byteorder
 import requests
 import msg_pb2
 import numpy as np
@@ -17,10 +18,10 @@ url = getattr(args, "h")
 print("now program is targeting to ", url)
 
 
-dataDt = np.dtype({'names': ['uuid', 'author', 'message', 'likes', 'image'],
-               'formats': ['U36', 'U64', 'U1024', np.int32, bool]})
-msgDt = np.dtype({'names': ['uuid', 'author', 'message', 'likes', 'image', 'needFeed', 'needImage', 'isDelete', 'isImageDelete'],
-               'formats': ['U36', 'U64', 'U1024', np.int32, object, bool, bool, bool, bool]})
+dataDt = np.dtype({'names'  : ['uuid', 'author', 'message', 'likes' , 'image'],
+                   'formats': ['U36' , 'U64'   , 'U1024'  , np.int32, bool   ]})
+msgDt = np.dtype({'names'  : ['uuid', 'author', 'message', 'likes' , 'image', 'needFeed', 'needImage', 'isDelete', 'isImageDelete'],
+                  'formats': ['U36' , 'U64'   , 'U1024'  , np.int32, object , bool      , bool       , bool      , bool           ]})
 
 #### jor data
 jorData        = None
@@ -28,7 +29,6 @@ currentJorIter = 0
 lastJorIter    = 0
 ####  stat
 genereated     = 0
-
 ######################## write buffer to file
 MAX_WRITE_BUFFER = 1000
 writeBuffer      = np.array([], dtype=dataDt)
@@ -36,22 +36,30 @@ writeBuffer      = np.array([], dtype=dataDt)
 #jor File
 jorFile         = None
 jorFileName     = "jor.csv"
+#result File
 resultFile      = None
 resultName      = getattr(args, "r")
 
 def tryFlush(forceFlush = False):
     global currentJorIter, lastJorIter, genereated, jorFileName, resultName
-    if (not forceFlush) and (writeBuffer.size < MAX_WRITE_BUFFER):
+    if (not forceFlush) and (writeBuffer.shape[0] < MAX_WRITE_BUFFER):
         return
-    for dayta in writeBuffer:
         ### save to jor
-        jorFile.write(','.join(dayta))
-        ### save to result
-        resultFile.write(bytes(','.join(dayta[0:4]) + ",\n"))
-        if (dayta[4]):
-            imageFile = open("images/" + dayta[0])
+    np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%s",header='uuid,author,message,likes,image')
+    
+
+    for daytaRow in writeBuffer:
+    ### save to result
+        resultFile.write(bytes('{},{},{},{},\n'.format(daytaRow['uuid'], 
+                                                    daytaRow['author'], 
+                                                    daytaRow['message'], 
+                                                    str(daytaRow['likes']))
+                              , 'utf-8'))
+        if (daytaRow["image"]):
+            imageFile = open("images/" + daytaRow['uuid'], "rb")
             shutil.copyfileobj(imageFile, resultFile)
             resultFile.write(b"\n")
+            imageFile.close()
     
         
         
@@ -60,14 +68,14 @@ def tryFlush(forceFlush = False):
 
 # this function is used to merge existing data with new data inspired from merge sort algorithm
 def merge(newArr):  # it is msgDt
-    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName, writeBuffer
     lastMsgIter = newArr.shape[0]
     currentMsgIter = 0
-
+    print(newArr)
     while( currentMsgIter < lastMsgIter ):
         
         ### for stat tracking
-        genereated = genereated + 1
+        print(newArr[currentMsgIter]["uuid"], "   " ,newArr[currentMsgIter]["likes"], "   ", newArr[currentMsgIter]["author"])
         
 
         if ((currentJorIter == lastJorIter) or (jorData[currentJorIter]["uuid"] > newArr[currentMsgIter]["uuid"])):
@@ -75,7 +83,7 @@ def merge(newArr):  # it is msgDt
             needImage = False
 
             if newArr[currentMsgIter]["isDelete"]:
-                currentMsgIter += currentMsgIter + 1
+                currentMsgIter = currentMsgIter + 1
                 continue
             elif not newArr[currentMsgIter]["isImageDelete"]:
                 if newArr[currentMsgIter]["needImage"]:
@@ -89,14 +97,14 @@ def merge(newArr):  # it is msgDt
                                    newArr[currentMsgIter]["message"],
                                    newArr[currentMsgIter]["likes"],
                                    needImage)], dtype=dataDt)
-            np.append(writeBuffer, preAppend)
+            writeBuffer = np.append(writeBuffer, preAppend)
             tryFlush()
             currentMsgIter = currentMsgIter + 1
 
         elif (jorData[currentJorIter]["uuid"] < newArr[currentMsgIter]["uuid"]):
             
             ######### case journal should write to file
-            np.append(writeBuffer, jorData[currentJorIter])
+            writeBuffer = np.append(writeBuffer, jorData[currentJorIter])
             tryFlush()
             currentJorIter = currentJorIter + 1
         elif (jorData[currentJorIter]["uuid"] == newArr[currentMsgIter]["uuid"]):
@@ -139,7 +147,7 @@ def merge(newArr):  # it is msgDt
                                    likes,
                                    (not imageDeleteCmd) and (NeedImageDisk or NeedImageInternet)
                                    )], dtype=msgDt)
-            np.append(writeBuffer, preAppend)
+            writeBuffer = np.append(writeBuffer, preAppend)
             tryFlush()
             currentJorIter  = currentJorIter + 1
             currentMsgIter  = currentMsgIter + 1
@@ -167,16 +175,20 @@ def getReq():
 
         decodedBatch = np.array([], dtype=msgDt)
         while(body.any()):
-            sizeOfMessage = struct.unpack("<I", body[:4])[0]
+            #to check message size but (must check that at server is little or big endian)(for now we check client instead during demo)
+            sizeOfMessage = struct.unpack("{}I".format("<" if (byteorder == "little") else ">"), body[:4])[0]
             readMsg = msg_pb2.msg()
+                                        ###### size of message size indication is 4 byte
             readMsg.ParseFromString(body[4: 4 + sizeOfMessage])
             readMsgArr = np.array( [(readMsg.uuid, readMsg.author, 
                                      readMsg.message, readMsg.likes, 
                                      readMsg.image, readMsg.needFeed, 
                                      readMsg.needImage, readMsg.isDelete, 
                                      readMsg.isImageDelete)], dtype=msgDt)
-            decodedBatch = np.concatenate((decodedBatch, readMsgArr))
+            decodedBatch = np.append(decodedBatch, readMsgArr)
             body = body[4 + sizeOfMessage:]
+
+            print("uuid get ",readMsg.uuid)
 
         #### TODO make it multithread
         print("system merging @generated items =",genereated)
@@ -191,21 +203,21 @@ if (os.path.isfile(jorFileName)):
         # read existing jornal file .csv to
         jorData = np.loadtxt(jorFileName,
                  delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4))
-        
+        print("jor data with shape 0 ", jorData.shape[0])
         lastJorIter = jorData.shape[0]
     except Exception as e:
         jorData = np.array([], dtype=dataDt)
 
 
-jorFile = open(jorFileName  , "wb")
-resultFile = open(resultName, "w" )
+jorFile    = open(jorFileName, "w" )
+resultFile = open(resultName , "wb")
 
 
 getReq()
 
 ### last batch of merge for in jor
 while currentJorIter < lastJorIter:
-    np.append(writeBuffer, jorData[currentJorIter])
+    writeBuffer = np.append(writeBuffer, jorData[currentJorIter])
     currentJorIter = currentJorIter + 1
 
 

@@ -9,8 +9,11 @@ DATAPOOL::DATAPOOL():
 consistent(true)
 {
 
-    consistent = true;
-    /////// communicate to database to recruit the data
+    cout << "Please enter DATAPOOL consistency state" << endl;
+    cin >> consistent;
+    cout << "DATAPOOL CONSISTENCY IS SET TO " << consistent << endl;
+
+
 }
 
 

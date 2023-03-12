@@ -10,6 +10,7 @@
 #include <string>
 #include "model.h"
 #include "../persistIo/ioCtrlFeed.h"
+#include "../configvar.h"
 #include <mutex>
 
 using namespace std;
@@ -29,8 +30,8 @@ private:
     std::unordered_set<MACRO_DATA*> coh_image[COH_STATE::COH_COUNT];
 
     ////// size indicator and limitation
-    uint64_t LIMITSIZE  = (((uint64_t)1) << (30)) - (((uint64_t)1) << (27));  ///// size in byte  1024-128
-    uint64_t LIMITKEY   = 300000;
+    uint64_t LIMITSIZE  = DP_LIMITSIZE;
+    uint64_t LIMITKEY   = DP_LIMITKEY;
     uint64_t amountKey  = 0;
     uint64_t amountSize = 0; //// size that value in storage is used
 

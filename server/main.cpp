@@ -3,6 +3,7 @@
 #include <utility>
 #include "controller.h"
 #include "crow.h"
+#include "configvar.h"
 
 
 int main() {
@@ -15,16 +16,16 @@ int main() {
 
         //////// create class
         DATAPOOL* myDataPool = new DATAPOOL();
-        DB_CONNECT_FEED* myDb_feed     = new DB_CONNECT_FEED("localhost", "1234");
-        DB_CONNECT_JOR*  myDb_jor      = new DB_CONNECT_JOR( "localhost", "1234");
-        DISK_CONNECT*    myDisk        = new DISK_CONNECT("/media/tanawin/tanawin1701e/Learning/cloud/midtermRepo/server/diskDes/");
+        DB_CONNECT_FEED* myDb_feed     = new DB_CONNECT_FEED(DB_HOSTNAME, DB_PASS);
+        DB_CONNECT_JOR*  myDb_jor      = new DB_CONNECT_JOR( DB_HOSTNAME, DB_PASS);
+        DISK_CONNECT*    myDisk        = new DISK_CONNECT(DISKDESPATH);
         CLIENT* myClient               = new CLIENT(myDataPool, myDisk, myDb_feed, myDb_jor);
         CONTROLLER* ctrl               = new CONTROLLER(myClient, myDataPool, myDisk, myDb_feed, myDb_jor);
 
 
         ///////// create runAhead thread
-//        auto proxyFuc = [](CLIENT* cl){cl->runAhead();};
-//        thread rh(proxyFuc, myClient);
+        auto proxyFuc = [](CLIENT* cl){cl->runAhead();};
+        thread rh(proxyFuc, myClient);
 
 
         crow::SimpleApp app;
@@ -53,21 +54,13 @@ int main() {
             ctrl->deleteHandler(req, res, std::move(uuid));
         });
 
+
+        CROW_ROUTE(app, "/api/stop/").methods(crow::HTTPMethod::GET)
+        (   [&app](const request& req, response& res){
+            app.stop();
+        });
+
         app.port(8080).multithreaded().run();
-
-        cout << "system is started" << endl;
-        while(true){
-            string command;
-            cin >> command;
-            if (command == "flush_feed"){
-                myDb_feed->flush();
-            }else if(command == "flush_feed"){
-                myDb_feed->flush();
-            } else if (command == "exit"){
-                break;
-            }
-
-        }
 
         return 0;
 }

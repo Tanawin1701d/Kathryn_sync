@@ -4,5 +4,6 @@ server/diskDes
 secret
 testing
 .DS_Store
-client/result.csv
+client/result*
+client/jor.csv
 client/images

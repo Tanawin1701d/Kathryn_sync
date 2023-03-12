@@ -59,11 +59,11 @@ private:
     int  amountrecruit = 0;
 
     /////// constant to prevent memory leak
-    uint64_t MAX_BUFFER_SIZE = ((uint64_t) 1) << 27;
-    uint64_t MAX_BUFFER_IMAGE_SIZE = MAX_BUFFER_SIZE;
-    uint16_t MAX_MESSAGE_TO_UPDATE = 1000;
-    uint32_t MAX_PENDING_LIST_SIZE = 1000000;
-    uint32_t MIN_PENDING_LIST_SIZE = 100;
+    uint64_t MAX_BUFFER_SIZE       = CLIENT_MAX_BUFFER_SIZE;
+    uint64_t MAX_BUFFER_IMAGE_SIZE = CLIENT_MAX_BUFFER_IMAGE_SIZE;
+    uint16_t MAX_MESSAGE_TO_UPDATE = CLIENT_MAX_MESSAGE_TO_UPDATE;
+    uint32_t MAX_PENDING_LIST_SIZE = CLIENT_MAX_PENDING_LIST_SIZE;
+    uint32_t MIN_PENDING_LIST_SIZE = CLIENT_MIN_PENDING_LIST_SIZE;
 
 
     /////// convariable for dispatcher to request runAhead execution
@@ -75,17 +75,17 @@ private:
     bool reqRunAhead = false;
 
     //////// bufferA variable
-    string    A_BUFFER;
-    BUF_STATE A_STATE;
-    bool      A_REQ_NEW_JN;
-    mutex     A_MUTEX;
+    string             A_BUFFER;
+    BUF_STATE          A_STATE;
+    bool               A_REQ_NEW_JN;
+    mutex              A_MUTEX;
     condition_variable sigFromAToDis;
 
     /////// bufferB variable
-    string    B_BUFFER;
-    BUF_STATE B_STATE;
-    bool      B_REQ_NEW_JN;
-    mutex B_MUTEX;
+    string             B_BUFFER;
+    BUF_STATE          B_STATE;
+    bool               B_REQ_NEW_JN;
+    mutex              B_MUTEX;
     condition_variable sigFromBToDis;
 
 

@@ -5,3 +5,7 @@ sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
 sudo apt install libmysqlcppconn-dev
 sudo apt install libcpprest-dev
 sudo apt install mysql-client
+
+cmake .. -DCROW_BUILD_EXAMPLES=OFF -DCROW_BUILD_TESTS=OFF -DCROW_FEATURES="compression"
+
+sudo make install
