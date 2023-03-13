@@ -42,6 +42,8 @@ resultName      = getattr(args, "r")
 
 def tryFlush(forceFlush = False):
     global currentJorIter, lastJorIter, genereated, jorFileName, resultName
+
+    print("trying.......... flush")
     if (not forceFlush) and (writeBuffer.shape[0] < MAX_WRITE_BUFFER):
         return
         ### save to jor
@@ -61,6 +63,7 @@ def tryFlush(forceFlush = False):
             resultFile.write(b"\n")
             imageFile.close()
     
+    print("finished flush")
         
         
 
@@ -193,7 +196,7 @@ def getReq():
         #### TODO make it multithread
         print("system merging @generated items =",genereated)
         merge(decodedBatch)
-        print("system finished merge @generated items =",genereated)
+        #print("system finished merge @generated items =",genereated)
 
 
 
