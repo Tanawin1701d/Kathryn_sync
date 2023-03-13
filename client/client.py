@@ -43,10 +43,12 @@ resultName      = getattr(args, "r")
 def tryFlush(forceFlush = False):
     global currentJorIter, lastJorIter, genereated, jorFileName, resultName
 
-    print("trying.......... flush")
     if (not forceFlush) and (writeBuffer.shape[0] < MAX_WRITE_BUFFER):
         return
         ### save to jor
+    
+    print("trying.......... flush")
+    
     np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%s",header='uuid,author,message,likes,image')
     
 
@@ -62,6 +64,8 @@ def tryFlush(forceFlush = False):
             shutil.copyfileobj(imageFile, resultFile)
             resultFile.write(b"\n")
             imageFile.close()
+
+    writeBuffer = np.empty(0, dtype=dataDt)
     
     print("finished flush")
         
