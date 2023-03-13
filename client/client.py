@@ -71,11 +71,11 @@ def merge(newArr):  # it is msgDt
     global currentJorIter, lastJorIter, genereated, jorFileName, resultName, writeBuffer
     lastMsgIter = newArr.shape[0]
     currentMsgIter = 0
-    print(newArr)
+    #print(newArr)
     while( currentMsgIter < lastMsgIter ):
         
         ### for stat tracking
-        print(newArr[currentMsgIter]["uuid"], "   " ,newArr[currentMsgIter]["likes"], "   ", newArr[currentMsgIter]["author"])
+        #print(newArr[currentMsgIter]["uuid"], "   " ,newArr[currentMsgIter]["likes"], "   ", newArr[currentMsgIter]["author"])
         
 
         if ((currentJorIter == lastJorIter) or (jorData[currentJorIter]["uuid"] > newArr[currentMsgIter]["uuid"])):
@@ -188,7 +188,7 @@ def getReq():
             decodedBatch = np.append(decodedBatch, readMsgArr)
             body = body[4 + sizeOfMessage:]
 
-            print("uuid get ",readMsg.uuid)
+            #print("uuid get ",readMsg.uuid)
 
         #### TODO make it multithread
         print("system merging @generated items =",genereated)
