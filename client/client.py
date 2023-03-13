@@ -217,7 +217,7 @@ if (os.path.isfile(jorFileName)):
 
 
 jorFile    = open(jorFileName, "w" )
-resultFile = open(resultName , "wb")
+resultFile = open(resultName , "wb", buffering=67108864)
 
 
 getReq()
