@@ -68,7 +68,7 @@ def tryFlush(forceFlush = False):
 
     writeBuffer = np.empty(0, dtype=dataDt)
     
-    print("finished flush")
+    #print("finished flush")
         
         
 
