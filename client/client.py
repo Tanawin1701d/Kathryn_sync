@@ -6,6 +6,7 @@ import shutil
 import os
 import argparse 
 import struct
+import threading
 
 
 
@@ -30,7 +31,7 @@ lastJorIter    = 0
 ####  stat
 genereated     = 0
 ######################## write buffer to file
-MAX_WRITE_BUFFER = 1000
+MAX_WRITE_BUFFER = 10
 writeBuffer      = np.array([], dtype=dataDt)
 #############################################
 #jor File
@@ -166,16 +167,25 @@ def merge(newArr):  # it is msgDt
 # let the use input the server url
 
 
-
 def getReq():
     global currentJorIter, lastJorIter, genereated, jorFileName, resultName
 
+    t = None
     while (True):
         # fetch new data from server until there isn't any new data left
         response = requests.get(url)
-        print ("finished")
+
+        if (t != None):
+            print("thread is joined")
+            t.join()
+
+
+
+        print ("finished fetching")
         body = np.frombuffer( response.content, dtype=np.uint8) # for now body is numpy array
         
+        
+
     
         if (body.shape[0] == 0):
             break # in-case we know that it is exited
@@ -199,10 +209,13 @@ def getReq():
 
         #### TODO make it multithread
         print("system merging @generated items =",genereated)
-        merge(decodedBatch)
+
+        t = threading.Thread(target=merge, args=(decodedBatch,))
+        t.start()
         #print("system finished merge @generated items =",genereated)
 
-
+    if t != None:
+        t.join()
 
 
 if (os.path.isfile(jorFileName)):
@@ -221,6 +234,8 @@ resultFile = open(resultName , "wb", buffering=67108864)
 
 
 getReq()
+
+
 
 ### last batch of merge for in jor
 while currentJorIter < lastJorIter:
