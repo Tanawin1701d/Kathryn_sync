@@ -202,15 +202,21 @@ def getReq():
         merge(decodedBatch)
         #print("system finished merge @generated items =",genereated)
 
+def boolConverter(s):
+    if s.lower() == 'true':
+        return True
+    return False
+
 print(os.path.isfile(jorFileName))
 if (os.path.isfile(jorFileName)):
     try: 
         # read existing jornal file .csv to
         jorData = np.loadtxt(jorFileName,
-                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4) )
+                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4), converters= {4 : boolConverter})
         print("jor data with shape 0 ", jorData.shape[0])
         lastJorIter = jorData.shape[0]
     except Exception as e:
+        print(e)
         jorData = np.array([], dtype=dataDt)
 
 
