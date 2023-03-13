@@ -49,7 +49,7 @@ def tryFlush(forceFlush = False):
     
     print("trying.......... flush")
     
-    np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%s",header='uuid,author,message,likes,image')
+    np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%r",header='uuid,author,message,likes,image')
     
 
     for daytaRow in writeBuffer:
@@ -202,18 +202,12 @@ def getReq():
         merge(decodedBatch)
         #print("system finished merge @generated items =",genereated)
 
-def bool_converter(s):
-    if s.lower() == 'true':
-        return True
-    else:
-        return False
-
 print(os.path.isfile(jorFileName))
 if (os.path.isfile(jorFileName)):
     try: 
         # read existing jornal file .csv to
         jorData = np.loadtxt(jorFileName,
-                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4),  converters={4: bool_converter})
+                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4) )
         print("jor data with shape 0 ", jorData.shape[0])
         lastJorIter = jorData.shape[0]
     except Exception as e:
