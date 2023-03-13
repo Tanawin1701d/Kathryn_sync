@@ -50,7 +50,7 @@ def tryFlush(forceFlush = False):
     
     print("trying.......... flush")
     
-    np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%s",header='uuid,author,message,likes,image')
+    np.savetxt(jorFile, writeBuffer, fmt= "%s,%s,%s,%d,%r",header='uuid,author,message,likes,image')
     
 
     for daytaRow in writeBuffer:
@@ -217,12 +217,11 @@ def getReq():
     if t != None:
         t.join()
 
-
 if (os.path.isfile(jorFileName)):
     try: 
         # read existing jornal file .csv to
         jorData = np.loadtxt(jorFileName,
-                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4))
+                 delimiter=",", dtype=dataDt, usecols=(0, 1, 2, 3, 4) )
         print("jor data with shape 0 ", jorData.shape[0])
         lastJorIter = jorData.shape[0]
     except Exception as e:
