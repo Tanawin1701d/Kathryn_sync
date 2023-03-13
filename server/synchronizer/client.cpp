@@ -133,10 +133,10 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
 
     BUF_LABEL  currentBucket = nextToStream;
 
-    string*      buffer;
-    BUF_STATE* buffer_state;
-    bool*      buffer_reqNewJor;
-    mutex*     buffer_mutex;
+    string*             buffer;
+    BUF_STATE*          buffer_state;
+    bool*               buffer_reqNewJor;
+    mutex*              buffer_mutex;
     condition_variable* buffer_to_dis_sig_convar;
 
     //////// select data for retrieve
@@ -146,6 +146,7 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
     buffer_mutex             = (currentBucket == BUF_LABEL::A) ? &A_MUTEX         :&B_MUTEX;
     buffer_to_dis_sig_convar = (currentBucket == BUF_LABEL::A) ? &sigFromAToDis   :&sigFromBToDis;
     reqRunAhead  = false;
+
     NEXT_MUTEX.unlock();
 
     /////////////////////////////////////// check state
@@ -193,7 +194,7 @@ void CLIENT::dispatch(string& results,  bool& reqNewJor) {
         BUF_LABEL  currentBucket = nextToStream;
         uq.unlock();
 
-        cout << "start runAhead exetion " << execTimes++ << endl;
+        cout << "start runAhead exetion " << execTimes << endl;
         /////// pointer to buffer
         string*    buffer;
         BUF_STATE* buffer_state;
