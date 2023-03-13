@@ -41,7 +41,7 @@ resultFile      = None
 resultName      = getattr(args, "r")
 
 def tryFlush(forceFlush = False):
-    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName, writeBuffer
 
     if (not forceFlush) and (writeBuffer.shape[0] < MAX_WRITE_BUFFER):
         return
