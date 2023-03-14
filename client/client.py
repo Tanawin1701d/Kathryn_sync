@@ -6,7 +6,7 @@ import shutil
 import os
 import argparse 
 import struct
-
+import threading
 
 
 parser = argparse.ArgumentParser("my argument")
@@ -55,9 +55,9 @@ def tryFlush(forceFlush = False):
     for daytaRow in writeBuffer:
     ### save to result
         resultFile.write(bytes('{},{},{},{},'.format(daytaRow['uuid'], 
-                                                    daytaRow['author'], 
-                                                    daytaRow['message'], 
-                                                    str(daytaRow['likes']))
+                                                     daytaRow['author'], 
+                                                     daytaRow['message'], 
+                                                     str(daytaRow['likes']))
                               , 'utf-8'))
         if (daytaRow["image"]):
             imageFile = open("images/" + daytaRow['uuid'], "rb")
@@ -165,14 +165,20 @@ def merge(newArr):  # it is msgDt
 
 # let the use input the server url
 
-
+t = None
 
 def getReq():
-    global currentJorIter, lastJorIter, genereated, jorFileName, resultName
+    global currentJorIter, lastJorIter, genereated, jorFileName, resultName, t
 
     while (True):
         # fetch new data from server until there isn't any new data left
         response = requests.get(url)
+
+
+        if (t != None):
+            t.join()
+
+
         print ("finished")
         body = np.frombuffer( response.content, dtype=np.uint8) # for now body is numpy array
         
@@ -199,7 +205,9 @@ def getReq():
 
         #### TODO make it multithread
         print("system merging @generated items =",genereated)
-        merge(decodedBatch)
+
+        t = threading.Thread(target = merge, args=(decodedBatch,))
+        t.start()
         #print("system finished merge @generated items =",genereated)
 
 def boolConverter(s):
@@ -229,6 +237,9 @@ resultFile = open(resultName , "wb", buffering=67108864)
 
 
 getReq()
+
+if t != None:
+    t.join()
 
 ### last batch of merge for in jor
 while currentJorIter < lastJorIter:
