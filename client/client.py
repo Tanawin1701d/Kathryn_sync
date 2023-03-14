@@ -153,7 +153,7 @@ def merge(newArr):  # it is msgDt
                                    message,
                                    likes,
                                    (not imageDeleteCmd) and (NeedImageDisk or NeedImageInternet)
-                                   )], dtype=msgDt)
+                                   )], dtype=dataDt)
             writeBuffer = np.append(writeBuffer, preAppend)
             tryFlush()
             currentJorIter  = currentJorIter + 1

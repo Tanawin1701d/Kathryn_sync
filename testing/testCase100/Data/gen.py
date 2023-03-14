@@ -32,9 +32,15 @@ for i in range(1,100):
         data[ "imageUpdate"] = True
         data["image"]  = generate_random_string(1 << 24)
 
-
     with open(f'{i}.json', 'w') as f:
         json.dump(data, f, indent=4)
+
+    if (i < 50):
+        with open(f'{500+i}.json', 'w') as fdl:
+                data["action"] = 1
+                data["imageUpdate"] = False
+                data["image"] = None
+                json.dump(data, fdl, indent=4)
 
 ##### put
 for i in range(90, 100):

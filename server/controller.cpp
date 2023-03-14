@@ -117,10 +117,6 @@ CONTROLLER::putHandler(const request& req, response& res, string uuid){
     ///////////////////////////////////// check storage integrity
     lockAll();
 
-    if (uuid == "000000000000000000000000000000000090"){
-        cout << "deted";
-    }
-
     bool integrity  = false;
     if (my_dataPool->isIdExistAndNotDeleted(uuid)){
         integrity = true;
@@ -130,6 +126,11 @@ CONTROLLER::putHandler(const request& req, response& res, string uuid){
         integrity  =true;
     }
     if (!integrity) {
+
+        delete fda;
+        if ( (imageUpdate) && (!shouldDeleteImage) )
+            delete ida;
+
         res.code = 404;
         // Send the response
         res.end();
