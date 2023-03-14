@@ -276,11 +276,11 @@ bool DATAPOOL::evictForFeed(uint64_t neededSpace) {
         if ( (amountSize + neededSpace) <= LIMITSIZE){ return true;}
     }
 
-    for (auto macroDataIter =  coh_feed[COH_STATE::M].begin();
-              macroDataIter           !=  coh_feed[COH_STATE::M].end();
+    for (auto macroDataIter =  coh_feed[COH_STATE::MS].begin();
+              macroDataIter           !=  coh_feed[COH_STATE::MS].end();
         ){
         evictFeedMtoI(*macroDataIter);
-        macroDataIter = coh_feed[COH_STATE::M].begin();
+        macroDataIter = coh_feed[COH_STATE::MS].begin();
         if ( (amountSize + neededSpace) <= LIMITSIZE){ return true;}
     }
     return false;

@@ -7,4 +7,5 @@ testing
 client/result*
 client/jor.csv
 client/images
+client/tmp
 server/configvar.h

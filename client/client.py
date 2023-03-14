@@ -54,7 +54,7 @@ def tryFlush(forceFlush = False):
 
     for daytaRow in writeBuffer:
     ### save to result
-        resultFile.write(bytes('{},{},{},{},\n'.format(daytaRow['uuid'], 
+        resultFile.write(bytes('{},{},{},{},'.format(daytaRow['uuid'], 
                                                     daytaRow['author'], 
                                                     daytaRow['message'], 
                                                     str(daytaRow['likes']))
@@ -62,8 +62,8 @@ def tryFlush(forceFlush = False):
         if (daytaRow["image"]):
             imageFile = open("images/" + daytaRow['uuid'], "rb")
             shutil.copyfileobj(imageFile, resultFile)
-            resultFile.write(b"\n")
             imageFile.close()
+        resultFile.write(b"\n")
 
     writeBuffer = np.empty(0, dtype=dataDt)
     
@@ -122,8 +122,8 @@ def merge(newArr):  # it is msgDt
             likes   = None
             
             NeedImageDisk     = jorData[currentJorIter]["image"]
-            NeedImageInternet = newArr[currentMsgIter]["needImage"]
-            imageDeleteCmd    = newArr[currentMsgIter]['isImageDelete']
+            NeedImageInternet = newArr[currentMsgIter ]["needImage"]
+            imageDeleteCmd    = newArr[currentMsgIter ]['isImageDelete']
             
             if (newArr[currentMsgIter]["isDelete"]):
                 currentJorIter  = currentJorIter + 1
@@ -203,11 +203,15 @@ def getReq():
         #print("system finished merge @generated items =",genereated)
 
 def boolConverter(s):
-    if s.lower() == 'true':
+    print(str(s))
+    if s == b'True':
+        #print("true Detect")
         return True
-    return False
+    elif s == b'False':
+        #print("false detect")
+        return False
+    raise NameError(f"can't interpret {s}")
 
-print(os.path.isfile(jorFileName))
 if (os.path.isfile(jorFileName)):
     try: 
         # read existing jornal file .csv to
